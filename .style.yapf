@@ -1,0 +1,6 @@
+[style]
+indent_width = 2
+arithmetic_precedence_indication = true
+split_before_dot= true
+continuation_indent_width= 2
+no_spaces_around_selected_binary_operators=*,/
