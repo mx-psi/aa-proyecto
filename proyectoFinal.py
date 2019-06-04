@@ -14,6 +14,8 @@ from sklearn.preprocessing import OneHotEncoder
 
 # Fijamos la semilla para tener resultados reproducibles
 np.random.seed(0)
+
+# Localización de los archivos
 DATOS_MAT = "datos/student-mat.csv"
 DATOS_PT = "datos/student-por.csv"
 
@@ -21,28 +23,80 @@ DATOS_PT = "datos/student-por.csv"
 # LECTURA DE DATOS #
 ####################
 
+# Nombres de las características que utilizamos para predecir
+features = [
+  'school', 'sex', 'age', 'address', 'famsize', 'Pstatus', 'Medu', 'Fedu',
+  'Mjob', 'Fjob', 'reason', 'guardian', 'traveltime', 'studytime', 'failures',
+  'schoolsup', 'famsup', 'paid', 'activities', 'nursery', 'higher', 'internet',
+  'romantic', 'famrel', 'freetime', 'goout', 'Dalc', 'Walc', 'health',
+  'absences'
+]
+
+# Nombres de los objetivos a predecir
+targets = ['G1', 'G2', 'G3']
+
+# Nombres de los datos leídos
+names = features + targets
+
+# Posibilidades en cada campo
+fields = {
+  0: ['GP', 'MS'],
+  1: ['F', 'M'],
+  3: ['U', 'R'],
+  4: ['LE3', 'GT3'],
+  5: ['T', 'A'],
+  8: ['teacher', 'health', 'services', 'at_home', 'other'],
+  9: ['teacher', 'health', 'services', 'at_home', 'other'],
+  10: ['home', 'reputation', 'course', 'other'],
+  11: ['mother', 'father', 'other'],
+  15: ['yes', 'no'],
+  16: ['yes', 'no'],
+  17: ['yes', 'no'],
+  18: ['yes', 'no'],
+  19: ['yes', 'no'],
+  20: ['yes', 'no'],
+  21: ['yes', 'no'],
+  22: ['yes', 'no']
+}
+
+# Lista de variables categóricas a codificar
+categorical = [int(x) for x in fields.keys()]
+
+
+def label_encode(row):
+  """Codifica con valores numéricos las etiquetas de los datos de entrada."""
+  for i, options in fields.items():
+    j = options.index(row[i])
+    if j == -1:
+      raise ValueError("'{}' no es un valor válido para el campo '{}'".format(
+        row[i], names[i]))
+    row[i] = options.index(row[i])
+  return tuple(row)
+
+# LEE DATOS Y CODIFICA VARIABLES CATEGÓRICAS
 with open(DATOS_MAT) as fichero_mat, open(DATOS_PT) as fichero_pt:
-  lector_mat = csv.reader(fichero_mat, delimiter =";", quotechar='"')
-  datos_brutos_mat = [tuple(row) for row in lector_mat][1:]
+  lector_mat = csv.reader(fichero_mat, delimiter=";", quotechar='"')
+  next(lector_mat, None)
+  datos_brutos_mat = [label_encode(row) for row in lector_mat]
 
-  lector_pt = csv.reader(fichero_pt, delimiter =";", quotechar='"')
-  datos_brutos_pt = [tuple(row) for row in lector_pt][1:]
+  lector_pt = csv.reader(fichero_pt, delimiter=";", quotechar='"')
+  next(lector_pt, None)
+  datos_brutos_pt = [label_encode(row) for row in lector_pt]
 
-names = ['school', 'sex', 'age', 'address', 'famsize', 'Pstatus', 'Medu', 'Fedu', 'Mjob', 'Fjob',
-                 'reason', 'guardian', 'traveltime', 'studytime', 'failures', 'schoolsup', 'famsup', 'paid',
-                 'activities', 'nursery', 'higher', 'internet', 'romantic', 'famrel', 'freetime', 'goout',
-                 'Dalc', 'Walc', 'health', 'absences', 'G1', 'G2', 'G3']
-formats = ['U2',   'U1',  'i4',   'U1',     'U3',      'U1',      'i4',    'i4',  'U7',    'U7',
-                   'U10',   'U6',       'i4',        'i4',         'i4',      'U3',        'U3',     'U3',
-                   'U3',       'U3',       'U3',     'U3',       'U3',       'i4',     'i4',       'i4',
-                   'i4',  'i4',  'i4',     'i4',        'i4', 'i4', 'i4']
-tipo = {'names':names, 'formats':formats}
+tipo = {'names': names, 'formats': [np.float64] * len(names)}
 
-datos_mat = np.array(datos_brutos_mat, dtype = tipo)
-datos_pt  = np.array(datos_brutos_pt, dtype = tipo)
+# Datos leídos como datos estructurados
+datos_mat = np.array(datos_brutos_mat, dtype=tipo)
+datos_pt = np.array(datos_brutos_pt, dtype=tipo)
 
-datos = rfn.join_by(["school","sex","age","address","famsize","Pstatus","Medu","Fedu","Mjob","Fjob","reason","nursery","internet"], datos_mat, datos_pt, jointype="inner") # TODO: ¿Por qué 381 y no 382?
+# datos = rfn.join_by(["school", "sex", "age", "address", "famsize", "Pstatus", "Medu", "Fedu", "Mjob", "Fjob", "reason", "nursery", "internet"],
+#                     datos_mat,
+#                     datos_pt,
+#                     jointype="inner")
 
+# Datos leídos como arrays NumPy compatibles con scikitlearn
+X_mat = datos_mat[features].copy().view((np.float64, len(features)))
+y_mat = datos_mat['G1'].copy().view((np.float64, 1))
 
 ################
 # PREPROCESADO #
@@ -50,11 +104,8 @@ datos = rfn.join_by(["school","sex","age","address","famsize","Pstatus","Medu","
 
 # CODIFICACIÓN DE VARIABLES CATEGÓRICAS
 
-# Lista de variables categóricas a codificar
-categorical = [0, 1, 3, 4, 5, 8, 9, 10, 11, 15, 16, 17, 18, 19, 20, 21, 22]
-
 # Codificador en variables one-hot
 encoder = OneHotEncoder(handle_unknown="error",
                         categorical_features=categorical)
 
-encoder.fit([list(row) for row in datos])
+encoder.fit(X)
