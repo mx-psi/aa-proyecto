@@ -73,6 +73,7 @@ def label_encode(row):
     row[i] = options.index(row[i])
   return tuple(row)
 
+
 # LEE DATOS Y CODIFICA VARIABLES CATEGÓRICAS
 with open(DATOS_MAT) as fichero_mat, open(DATOS_PT) as fichero_pt:
   lector_mat = csv.reader(fichero_mat, delimiter=";", quotechar='"')
@@ -89,14 +90,17 @@ tipo = {'names': names, 'formats': [np.float64] * len(names)}
 datos_mat = np.array(datos_brutos_mat, dtype=tipo)
 datos_pt = np.array(datos_brutos_pt, dtype=tipo)
 
-# datos = rfn.join_by(["school", "sex", "age", "address", "famsize", "Pstatus", "Medu", "Fedu", "Mjob", "Fjob", "reason", "nursery", "internet"],
-#                     datos_mat,
-#                     datos_pt,
-#                     jointype="inner")
+datos = rfn.join_by([
+  "school", "sex", "age", "address", "famsize", "Pstatus", "Medu", "Fedu",
+  "Mjob", "Fjob", "reason", "nursery", "internet"
+],
+                    datos_mat,
+                    datos_pt,
+                    jointype="inner")
 
 # Datos leídos como arrays NumPy compatibles con scikitlearn
 X_mat = datos_mat[features].copy().view((np.float64, len(features)))
-y_mat = datos_mat['G1'].copy().view((np.float64, 1))
+y_mat = datos_mat['G3'].copy().view((np.float64, 1))
 
 ################
 # PREPROCESADO #
