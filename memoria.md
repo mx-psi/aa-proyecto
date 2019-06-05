@@ -17,6 +17,45 @@ link-citations: true
 
 \newpage
 
+# Definición del problema y enfoque elegido
+
+## Introducción
+
+Este trabajo intenta analizar datos sobre estudiantes de secundaria portugueses con el objetivo de predecir su nota de matemáticas y lengua portuguesa. El conjunto de datos reune diversas características sobre el entorno familiar de los estudiantes, la educación de sus padres y otros factores que potencialmente podrían afectar al rendimiento académico.
+
+El dataset en cuestión está disponible en el repositorio UCI bajo el nombre ["Student Performance Dataset"](https://archive.ics.uci.edu/ml/datasets/student+performance).
+Un análisis previo del mismo fue realizado por Paulo Cortez y Alice Silva de la universidad de Minho [@CortezUSINGDATAMINING2008], con el objetivo de generar modelos que puedan predecir la nota final a partir de los datos disponibles.
+
+## Obtención de los datos
+
+Los datos pueden obtenerse en el zip `student.zip` disponible en la URL: 
+
+> [`archive.ics.uci.edu/ml/datasets/student+performance`](https://archive.ics.uci.edu/ml/datasets/student+performance)
+
+bajo el apartado *Data Folder*.
+
+Sólo se han utilizado los ficheros `student-mat.csv` y `student-por.csv`, que incluyen los datos para las clases de matemáticas y portugués respectivamente.
+Se asume que todos los datos están en la carpeta `datos`.
+
+Por simplicidad y para asegurar la reproducibilidad, se incluyen a continuación unas líneas de comandos que permiten obtener el conjunto de datos en un sistema Unix si son ejecutadas desde la carpeta donde se halle el script.
+
+Requieren de las herramientas `wget` y `unzip`, disponibles por defecto en la gran mayoría de sistemas.
+
+```sh
+mkdir -p datos
+
+wget \
+  archive.ics.uci.edu/ml/machine-learning-databases/00320/student.zip \
+  -O datos/student.zip
+  
+unzip datos/student.zip -d datos/
+rm datos/student.zip
+```
+
+## Descripción del conjunto de datos
+
+## Objetivos y enfoque
+
 # Preprocesado
 
 ## Codificación de variables categóricas
@@ -27,43 +66,43 @@ Para poder tratar este tipo de datos con los algoritmos aprendidos en clase, deb
 Hemos clasificado las variables en función de su tipo en variables numéricas (N) o categóricas (C).
 Podríamos distinguir una tercera categoría entre aquellas variables categóricas que admitan un orden pero ninguna de las variables de este dataset presenta este comportamiento.
 
-La siguiente tabla muestra la clasificación de las variables junto con su descripción original en inglés.
+La siguiente tabla muestra la clasificación de las variables.
 
-| #  | Nombre     | Descripción                                  | Tipo |
-|----|------------|----------------------------------------------|------|
-| 0  | school     | student's school                             | C    |
-| 1  | sex        | student's sex                                | C    |
-| 2  | age        | student's age                                | N    |
-| 3  | address    | student's home address type                  | C    |
-| 4  | famsize    | family size                                  | C    |
-| 5  | Pstatus    | parent's cohabitation status                 | C    |
-| 6  | Medu       | mother's education                           | N    |
-| 7  | Fedu       | father's education                           | N    |
-| 8  | Mjob       | mother's job                                 | C    |
-| 9  | Fjob       | father's job                                 | C    |
-| 10 | reason     | reason to choose this school                 | C    |
-| 11 | guardian   | student's guardian                           | C    |
-| 12 | traveltime | home to school travel time                   | N    |
-| 13 | studytime  | weekly study time                            | N    |
-| 14 | failures   | number of past class failures                | N    |
-| 15 | schoolsup  | extra educational support                    | C    |
-| 16 | famsup     | family educational support                   | C    |
-| 17 | paid       | extra paid classes within the course subject | C    |
-| 18 | activities | extra-curricular activities                  | C    |
-| 19 | nursery    | attended nursery school                      | C    |
-| 20 | higher     | wants to take higher education               | C    |
-| 21 | internet   | Internet access at home                      | C    |
-| 22 | romantic   | with a romantic relationship                 | C    |
-| 23 | famrel     | quality of family relationships              | N    |
-| 24 | freetime   | free time after school                       | N    |
-| 25 | goout      | going out with friends                       | N    |
-| 26 | Dalc       | workday alcohol consumption                  | N    |
-| 27 | Walc       | weekend alcohol consumption                  | N    |
-| 28 | health     | current health status                        | N    |
-| 29 | absences   | number of school absences                    | N    |
-| 30 | G1         | first period grade                           | N    |
-| 31 | G2         | second period grade                          | N    |
-| 32 | G3         | final grade                                  | N    |
+| #  | Nombre     | Tipo |
+|----|------------|------|
+| 0  | school     | C    |
+| 1  | sex        | C    |
+| 2  | age        | N    |
+| 3  | address    | C    |
+| 4  | famsize    | C    |
+| 5  | Pstatus    | C    |
+| 6  | Medu       | N    |
+| 7  | Fedu       | N    |
+| 8  | Mjob       | C    |
+| 9  | Fjob       | C    |
+| 10 | reason     | C    |
+| 11 | guardian   | C    |
+| 12 | traveltime | N    |
+| 13 | studytime  | N    |
+| 14 | failures   | N    |
+| 15 | schoolsup  | C    |
+| 16 | famsup     | C    |
+| 17 | paid       | C    |
+| 18 | activities | C    |
+| 19 | nursery    | C    |
+| 20 | higher     | C    |
+| 21 | internet   | C    |
+| 22 | romantic   | C    |
+| 23 | famrel     | N    |
+| 24 | freetime   | N    |
+| 25 | goout      | N    |
+| 26 | Dalc       | N    |
+| 27 | Walc       | N    |
+| 28 | health     | N    |
+| 29 | absences   | N    |
+| 30 | G1         | N    |
+| 31 | G2         | N    |
+| 32 | G3         | N    |
 
 
 Para convertir los datos utilizamos el objeto `OneHotEncoder` de `sklearn.preprocessing`.
@@ -80,3 +119,6 @@ encoder = OneHotEncoder(categories="auto",
 
 Hemos indicado que las categorías se infieran de forma automática, que los valores desconocidos den error y que las variables categóricas son las de la lista `categorical`
 
+\newpage
+
+# Bibliografía {.unnumbered}
