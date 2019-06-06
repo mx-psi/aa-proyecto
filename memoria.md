@@ -52,9 +52,68 @@ unzip datos/student.zip -d datos/
 rm datos/student.zip
 ```
 
+\newpage
+
 ## Descripción del conjunto de datos
 
+El conjunto de datos a utilizar consta de dos subconjuntos diferenciados:
+
+1. un primer conjunto de datos correspondiente a 395 estudiantes de matemáticas y
+2. un segundo conjunto de datos correspondiente a 649 estudiantes de portugués.
+
+Ambos conjuntos utilizan las mismas características obtenidas mediante la realización de cuestionarios.
+Del conjunto de características se eliminaron durante su construcción algunas características que no aportaban información por su reducida varianza.
+Algunos de los estudiantes coinciden en ambos grupos y son identificables mediante un conjunto de características clave.
+
+Las características disponibles junto con su descripción original en inglés pueden verse en la siguiente tabla:
+
+| Nombre| Descripción|
+|-------|------------|
+|school|student's school|
+|sex|student's sex|
+|age|student's age|
+|address|student's home address type|
+|famsize|family size|
+|Pstatus|parent's cohabitation status|
+|Medu|mother's education|
+|Fedu|father's education|
+|Mjob|mother's job|
+|Fjob|father's job|
+|reason|reason to choose this school|
+|guardian|student's guardian|
+|traveltime|home to school travel time|
+|studytime|weekly study time|
+|failures|number of past class failures|
+|schoolsup|extra educational support|
+|famsup|family educational support|
+|paid|extra paid classes within the course subject|
+|activities|extra-curricular activities|
+|nursery|attended nursery school|
+|higher|wants to take higher education|
+|internet|Internet access at home|
+|romantic|with a romantic relationship|
+|famrel|quality of family relationships|
+|freetime|free time after school|
+|goout|going out with friends|
+|Dalc|workday alcohol consumption|
+|Walc|weekend alcohol consumption|
+|health|current health status|
+|absences|number of school absences|
+|G1|first period grade|
+|G2|second period grade|
+|G3|final grade|
+
+
+Las notas de los estudiantes se dan como un valor entero de 0 a 20 puntos y hay 3 disponibles: la nota del primer parcial (G1), la nota del segundo parcial (G2) y la nota final (G3).
+
 ## Objetivos y enfoque
+
+El problema a realizar puede tratarse desde dos enfoques principales:
+
+1. como un problema de **clasificación**, en el que clasificamos a los estudiantes en función de si están aprobados o no (esto es, si G3 es mayor o igual 10 o no) o
+2. como un problema de **regresión**, en el que intentamos predecir la nota de los estudiantes en función de sus características.
+
+<!--TODO: Describir cuál hemos elegido y por qué -->
 
 # Preprocesado
 
@@ -121,4 +180,17 @@ Hemos indicado que las categorías se infieran de forma automática, que los val
 
 \newpage
 
+## Valoración del interés de variables y selección
+## Normalización de variables
+# Función de pérdida
+
+# Selección de técnicas a utilizar
+
+# Aplicación de las técnicas
+
+## Regularización
+
+# Valoración del resultado
+
+# Conclusiones
 # Bibliografía {.unnumbered}
