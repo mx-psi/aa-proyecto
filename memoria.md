@@ -1,7 +1,7 @@
 ---
 title: Proyecto final
 subtitle: Aprendizaje Automático
-authors: 
+author: 
   - Pablo Baeyens Fernández 
   - Antonio Checa Molina
 date: Curso 2018-2019
