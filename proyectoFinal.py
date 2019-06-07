@@ -16,6 +16,8 @@ import time
 import numpy.lib.recfunctions as rfn
 from sklearn.preprocessing import OneHotEncoder
 from sklearn.model_selection import train_test_split
+from sklearn.model_selection import GridSearchCV
+from sklearn.model_selection import RandomizedSearchCV
 from sklearn.decomposition import PCA
 from sklearn.pipeline import Pipeline
 from sklearn.preprocessing import StandardScaler
@@ -179,7 +181,6 @@ X_tra, X_vad, y_tra, y_vad = train_test_split(X_mat,
                                               test_size=0.2,
                                               random_state=1)
 
-print(X_tra.shape, X_vad.shape)
 
 ################
 # PREPROCESADO #
@@ -197,9 +198,32 @@ preprocesado_s_pca = [("Escalado", StandardScaler()),
 # DEFINICIÓN DE MODELOS #
 #########################
 
-randomf_clasif = [("Random Forest",
-                   RandomForestClassifier(n_estimators=1000, max_features=5))]
+randomf_clasif = [("RandomForest",
+                   RandomForestClassifier())]
 
+pipe = Pipeline(randomf_clasif)
+
+N_ESTIMATORS_OPTIONS = [100, 500, 1000]
+MAX_DEPTH_OPTIONS = [10, 50, 100]
+BOOTSTRAP_OPTIONS = [False, True]
+MIN_SAMPLES_SPLIT_OPTIONS = [2, 10, 20]
+MIN_SAMPLES_LEAF_OPTIONS = [1, 2, 5, 10]
+
+param_grid = {
+        'RandomForest__n_estimators': N_ESTIMATORS_OPTIONS,
+        'RandomForest__max_depth': MAX_DEPTH_OPTIONS,
+        'RandomForest__bootstrap': BOOTSTRAP_OPTIONS,
+        'RandomForest__min_samples_split': MIN_SAMPLES_SPLIT_OPTIONS,
+        'RandomForest__min_samples_leaf': MIN_SAMPLES_LEAF_OPTIONS
+    }
+
+grid = RandomizedSearchCV(pipe, n_iter = 100, cv=5, n_jobs=-1, param_distributions=param_grid, iid=False)
+grid.fit(X_tra, y_tra)
+
+print("Mejor score total: ", grid.best_score_)
+print("Mejor estimador: ")
+for x in grid.best_params_.keys():
+    print(x,":", grid.best_params_[x])
 
 #################
 # CLASIFICACIÓN #
