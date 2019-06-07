@@ -201,12 +201,15 @@ preprocesado_s_pca = [("Escalado", StandardScaler()),
 randomf_clasif = [("RandomForest",
                    RandomForestClassifier())]
 
+randomf_clasif_improv = [("RandomForest",
+                   RandomForestClassifier(n_estimators = 500, min_samples_split = 20, min_samples_leaf = 2, max_depth = 10))]
 
-clasificador_randomf = Pipeline(randomf_clasif, memory = CACHE)
+
+clasificador_randomf = Pipeline(randomf_clasif_improv, memory = CACHE)
 clasificador_randomf_pca_s = Pipeline(preprocesado_pca_s +
-                                      randomf_clasif, memory = CACHE)
+                                      randomf_clasif_improv, memory = CACHE)
 clasificador_randomf_s_pca = Pipeline(preprocesado_s_pca +
-                                      randomf_clasif, memory = CACHE)
+                                      randomf_clasif_improv, memory = CACHE)
 
 clasificador_dummy = Pipeline([("Dummy", DummyClassifier(strategy="stratified"))])
 
@@ -244,7 +247,7 @@ y_vad_cls[y_vad_cls >= 10] = 1
 pipe = Pipeline(randomf_clasif)
 
 N_ESTIMATORS_OPTIONS = [100, 500, 1000]
-MAX_DEPTH_OPTIONS = [10, 50, 100]
+MAX_DEPTH_OPTIONS = [10, 20, 30]
 MIN_SAMPLES_SPLIT_OPTIONS = [2, 10, 20]
 MIN_SAMPLES_LEAF_OPTIONS = [1, 2, 5, 10]
 
