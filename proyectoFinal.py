@@ -76,8 +76,8 @@ DATOS_PT = "datos/student-por.csv"
 # LECTURA DE DATOS #
 ####################
 
-# Nombres de las características que utilizamos para predecir
-features = [
+# Nombres de las características que utilizamos para predecir (versión A)
+features_A = [
   'school', 'sex', 'age', 'address', 'famsize', 'Pstatus', 'Medu', 'Fedu',
   'Mjob', 'Fjob', 'reason', 'guardian', 'traveltime', 'studytime', 'failures',
   'schoolsup', 'famsup', 'paid', 'activities', 'nursery', 'higher', 'internet',
@@ -85,11 +85,14 @@ features = [
   'absences'
 ]
 
-# Nombres de los objetivos a predecir
-targets = ['G1', 'G2', 'G3']
+# Versión B: con un parcial
+features_B = features_A + ['G1']
+
+# Versión C: con dos parciales
+features_C = features_B + ['G2']
 
 # Nombres de los datos leídos
-names = features + targets
+names = features_A + ['G1', 'G2', 'G3']
 
 # Posibilidades en cada campo
 fields = {
@@ -130,11 +133,11 @@ def label_encode(row):
 # LEE DATOS Y CODIFICA VARIABLES CATEGÓRICAS
 with open(DATOS_MAT) as fichero_mat, open(DATOS_PT) as fichero_pt:
   lector_mat = csv.reader(fichero_mat, delimiter=";", quotechar='"')
-  next(lector_mat, None)
+  next(lector_mat, None)  # ignora header
   datos_brutos_mat = [label_encode(row) for row in lector_mat]
 
   lector_pt = csv.reader(fichero_pt, delimiter=";", quotechar='"')
-  next(lector_pt, None)
+  next(lector_pt, None)  # ignora header
   datos_brutos_pt = [label_encode(row) for row in lector_pt]
 
 tipo = {'names': names, 'formats': [np.float64] * len(names)}
@@ -152,15 +155,19 @@ datos = rfn.join_by([
                     jointype="inner")
 
 # Datos leídos como arrays NumPy compatibles con scikitlearn
-X_mat = datos_mat[features].copy().view((np.float64, len(features)))
+X_mat = datos_mat[features_A].copy().view((np.float64, len(features_A)))
 y_mat = datos_mat['G3'].copy().view((np.float64, 1))
+y_mat[y_mat < 10] = -1
+y_mat[y_mat >= 10] = 1
 
 ################
 # PREPROCESADO #
 ################
 
-X_tra, X_vad, y_tra, y_vad = train_test_split(X_mat, y_mat, test_size=0.2, random_state=1)
-
+X_tra, X_vad, y_tra, y_vad = train_test_split(X_mat,
+                                              y_mat,
+                                              test_size=0.2,
+                                              random_state=1)
 
 preprocesado_pca_s = [("PCA", PCA(n_components=0.95)),
                       ("escalado", StandardScaler())]
@@ -171,47 +178,40 @@ preprocesado_s_pca = [("escalado", StandardScaler()),
 preprocesador_pca_s = Pipeline(preprocesado_pca_s)
 preprocesador_s_pca = Pipeline(preprocesado_s_pca)
 
-
-randomf_clasif = [("Random Forest", RandomForestClassifier(n_estimators=1000, max_features = 5))]
+randomf_clasif = [("Random Forest",
+                   RandomForestClassifier(n_estimators=1000, max_features=5))]
 
 clasificador_randomf = Pipeline(randomf_clasif)
-
 
 clasificador_randomf_pca_s = Pipeline(preprocesado_pca_s + randomf_clasif)
 clasificador_randomf_s_pca = Pipeline(preprocesado_s_pca + randomf_clasif)
 
-
 with mensaje("Ajustando modelo de clasificación Random Forest"):
   clasificador_randomf.fit(X_tra, y_tra)
 
-
 y_clasif_randomf = clasificador_randomf.predict(X_vad)
 
-estima_error_clasif(clasificador_randomf, X_tra, y_tra,
-                    X_vad, y_vad, "RandomForest")
+estima_error_clasif(clasificador_randomf, X_tra, y_tra, X_vad, y_vad,
+                    "RandomForest")
 
 with mensaje("Ajustando modelo de clasificación Random Forest"):
-   clasificador_randomf_pca_s.fit(X_tra, y_tra)
-
-
+  clasificador_randomf_pca_s.fit(X_tra, y_tra)
 
 y_clasif_randomf_pca_s = clasificador_randomf_pca_s.predict(X_vad)
 
-
-estima_error_clasif(clasificador_randomf_pca_s, X_tra, y_tra,
-                    X_vad, y_vad, "RandomForest (PCA-S)")
+estima_error_clasif(clasificador_randomf_pca_s, X_tra, y_tra, X_vad, y_vad,
+                    "RandomForest (PCA-S)")
 
 with mensaje("Ajustando modelo de clasificación Random Forest"):
-   clasificador_randomf_s_pca.fit(X_tra, y_tra)
+  clasificador_randomf_s_pca.fit(X_tra, y_tra)
 
 y_clasif_randomf_s_pca = clasificador_randomf_s_pca.predict(X_vad)
 
-estima_error_clasif(clasificador_randomf_s_pca, X_tra, y_tra,
-                    X_vad, y_vad, "RandomForest (S-PCA)")
+estima_error_clasif(clasificador_randomf_s_pca, X_tra, y_tra, X_vad, y_vad,
+                    "RandomForest (S-PCA)")
 
 # Por el error parece que el mejor es S-PCA, es decir, escalar y luego hacer PCA
 # Los errores siguen siendo tremendamente altos, así que tampoco me fiaría mucho
-
 
 # CODIFICACIÓN DE VARIABLES CATEGÓRICAS
 
