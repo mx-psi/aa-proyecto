@@ -171,6 +171,15 @@ Hemos indicado que las categorías se infieran de forma automática, que los val
 
 ## Valoración del interés de variables y selección
 ## Normalización de variables
+## Conjuntos de training, validación y test
+
+Los conjuntos de datos que se proporcionan no están separados en conjuntos de training y test.
+Utilizaremos un conjunto de test para obtener una estimación del error real.
+
+Para separarlos utilizamos la función `train_test_split` de `sklearn.model_selection`.
+Utilizamos un 20% de los datos como test.
+
+Además, para la estimación de los parámetros utilizaremos validación cruzada.
 
 # Función de pérdida utilizada
 
