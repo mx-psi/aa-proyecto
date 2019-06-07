@@ -8,15 +8,16 @@ Nombres Estudiantes:
 """
 
 import csv
-import numpy as np
-import matplotlib.pyplot as plt
 import math
 import threading
 import time
+
+import numpy as np
+import matplotlib.pyplot as plt
 import numpy.lib.recfunctions as rfn
+
 from sklearn.preprocessing import OneHotEncoder
 from sklearn.model_selection import train_test_split
-from sklearn.model_selection import GridSearchCV
 from sklearn.model_selection import RandomizedSearchCV
 from sklearn.feature_selection import VarianceThreshold
 from sklearn.decomposition import PCA
@@ -86,23 +87,17 @@ CACHE = mkdtemp()
 # LECTURA DE DATOS #
 ####################
 
-# Nombres de las características que utilizamos para predecir (versión A)
-features_A = [
+# Nombres de las características que utilizamos para predecir
+features = [
   'school', 'sex', 'age', 'address', 'famsize', 'Pstatus', 'Medu', 'Fedu',
   'Mjob', 'Fjob', 'reason', 'guardian', 'traveltime', 'studytime', 'failures',
   'schoolsup', 'famsup', 'paid', 'activities', 'nursery', 'higher', 'internet',
   'romantic', 'famrel', 'freetime', 'goout', 'Dalc', 'Walc', 'health',
-  'absences'
+  'absences', 'G1', 'G2'
 ]
 
-# Versión B: con un parcial
-features_B = features_A + ['G1']
-
-# Versión C: con dos parciales
-features_C = features_B + ['G2']
-
 # Nombres de los datos leídos
-names = features_A + ['G1', 'G2', 'G3']
+names = features + ['G3']
 
 # Posibilidades en cada campo
 fields = {
@@ -170,8 +165,8 @@ encoder = OneHotEncoder(handle_unknown="error",
                         categorical_features=categorical)
 
 # Datos leídos como arrays NumPy compatibles con scikitlearn
-X_mat = encoder.fit_transform(datos_mat[features_C].copy().view(
-  (np.float64, len(features_C))))
+X_mat = encoder.fit_transform(datos_mat[features].copy().view(
+  (np.float64, len(features))))
 y_mat = datos_mat['G3'].copy().view((np.float64, 1))
 
 ###################
@@ -189,89 +184,80 @@ X_tra, X_vad, y_tra, y_vad = train_test_split(X_mat,
 
 # SELECCIÓN DE CARACTERÍSTICAS
 
-preprocesado_var_s = [("EliminarVarBajas", VarianceThreshold(0.5)),
-                      ("Escalado", StandardScaler())]
-
-
-escalado = [("Escalado", StandardScaler())]
+varianceThreshold = Pipeline([("EliminarVarBajas", VarianceThreshold(0.5)),
+                              ("Escalado", StandardScaler())])
+preprocesado = [("preprocesado", None)]
+param_preprocesado = {"preprocesado": [varianceThreshold, None]}
 
 #########################
 # DEFINICIÓN DE MODELOS #
 #########################
 
-randomf_clasif = [("RandomForest", RandomForestClassifier(random_state=0))]
+params_rs = dict(n_iter=10, cv=5, n_jobs=-1, iid=False)
 
-randomf_clasif_improv = [("RandomForest",
-                          RandomForestClassifier(n_estimators=500,
-                                                 min_samples_split=20,
-                                                 min_samples_leaf=2,
-                                                 max_depth=10,
-                                                 random_state=0))]
+# CLASIFICACIÓN
+
+## RANDOM FOREST
+
+param_rf = {
+  'RandomForest__n_estimators': [100, 500, 1000],
+  'RandomForest__max_depth': [10, 20, 30],
+  'RandomForest__min_samples_split': [2, 10, 20],
+  'RandomForest__min_samples_leaf': [1, 2, 5, 10],
+}
+
+randomf_clasif = [("RandomForest", RandomForestClassifier(random_state=0))]
+clasificador_randomf = RandomizedSearchCV(
+  Pipeline(preprocesado + randomf_clasif, memory=CACHE),
+  param_distributions={**param_preprocesado, **param_rf},
+  **params_rs)
+
+## BOOSTING
+
+param_ab_cls = {
+  'AdaBoost__n_estimators': [100, 500, 1000],
+  'AdaBoost__learning_rate': [0.5 * (i+1) for i in range(20)]
+}
 
 boosting_clasif = [("AdaBoost", AdaBoostClassifier(random_state=0))]
+clasificador_boost = RandomizedSearchCV(
+  Pipeline(preprocesado + boosting_clasif, memory=CACHE),
+  param_distributions={**param_preprocesado, **param_ab_cls},
+  **params_rs)
 
-boosting_clasif_improv = [("AdaBoost",
-                           AdaBoostClassifier(random_state=0,
-                                              n_estimators=100,
-                                              learning_rate=4.5))]
-
-clasificador_randomf = Pipeline(randomf_clasif_improv, memory = CACHE)
-clasificador_randomf_var_s = Pipeline(preprocesado_var_s +
-                                      randomf_clasif_improv, memory = CACHE)
-
-
-clasificador_boost = Pipeline(boosting_clasif_improv, memory = CACHE)
-clasificador_boost_var_s = Pipeline(preprocesado_var_s +
-                                      boosting_clasif_improv, memory = CACHE)
-
-
-clasificador_dummy = Pipeline([("Dummy", DummyClassifier(strategy="stratified"))])
-
-clasificador_dummy = Pipeline([("Dummy",
-                                DummyClassifier(strategy="stratified"))])
+clasificador_dummy = DummyClassifier(strategy="stratified")
 
 # REGRESIÓN
 # TODO: Parámetros para GridSearch
 # C, epsilon
-svr = [("SVM", SVR(kernel = "rbf"))]
+svr = [("SVM", SVR(kernel="rbf"))]
 svr_bare = Pipeline(svr)
-svr_var_s = Pipeline(preprocesado_var_s + svr)
+svr_var_s = Pipeline(preprocesado + svr)
 
 dummy_regressor = Pipeline([("Dummy", DummyRegressor(strategy="mean"))])
 
 randomf_regres = [("RandomForest", RandomForestRegressor(random_state=0))]
+regresor_randomf = RandomizedSearchCV(
+  Pipeline(preprocesado + randomf_regres, memory=CACHE),
+  param_distributions={**param_preprocesado, **param_rf},
+  **params_rs)
 
-randomf_regres_improv = [("RandomForest",
-                          RandomForestRegressor(n_estimators=500,
-                                                min_samples_split=20,
-                                                min_samples_leaf=2,
-                                                max_depth=10,
-                                                random_state=0))]
-
+param_ab_reg = {**param_ab_cls,
+                'AdaBoost__loss': ['linear', 'square', 'exponential']}
 boosting_regres = [("AdaBoost", AdaBoostRegressor(random_state=0))]
-
-boosting_regres_improv = [("AdaBoost",
-                   AdaBoostRegressor(random_state = 0, n_estimators = 100, loss = 'square', learning_rate = 1))]
-
-regresor_randomf = Pipeline(randomf_regres_improv, memory = CACHE)
-regresor_randomf_var_s = Pipeline(preprocesado_var_s +
-                                      randomf_regres_improv, memory = CACHE)
-
-regresor_boost = Pipeline(boosting_regres_improv, memory = CACHE)
-regresor_boost_var_s = Pipeline(preprocesado_var_s +
-                                      boosting_regres_improv, memory = CACHE)
-
+regresor_boost = RandomizedSearchCV(
+  Pipeline(preprocesado + boosting_regres, memory=CACHE),
+  param_distributions={**param_preprocesado, **param_ab_reg},
+  **params_rs)
 
 #################
 # CLASIFICACIÓN #
 #################
 
 # Lista de clasificadores
-clasificadores = [clasificador_randomf,
-                  clasificador_randomf_var_s,
-                  clasificador_dummy,
-                  clasificador_boost,
-                  clasificador_boost_var_s]
+clasificadores = [("Dummy", clasificador_dummy),
+                  ("Random Forest", clasificador_randomf),
+                  ("AdaBoost", clasificador_boost)]
 
 y_tra_cls = y_tra.copy()
 y_tra_cls[y_tra_cls < 10] = -1
@@ -281,88 +267,7 @@ y_vad_cls = y_vad.copy()
 y_vad_cls[y_vad_cls < 10] = -1
 y_vad_cls[y_vad_cls >= 10] = 1
 
-# Hiperparámetros de RF Clasificador
-N_ITERS = 10  # Cambia el número de iteraciones de todos los Randomized Search
-# a la hora de buscar el parámetro. Si se quieren mejores resultados
-# aunque tarde más, este parámetro habría que incrementarlo
-
-param_grid_rf = {
-  'RandomForest__n_estimators': [100, 500, 1000],
-  'RandomForest__max_depth': [10, 20, 30],
-  'RandomForest__min_samples_split': [2, 10, 20],
-  'RandomForest__min_samples_leaf': [1, 2, 5, 10]
-}
-
-grid = RandomizedSearchCV(Pipeline(randomf_clasif),
-                             n_iter=N_ITERS,
-                             cv=5,
-                             n_jobs=-1,
-                             param_distributions=param_grid_rf,
-                             iid=False)
-grid.fit(X_tra, y_tra_cls)
-
-print("Mejor score total RandomForest Clasificador: ", grid.best_score_)
-print("Mejor estimador RandomForest Clasificador: ")
-for x in grid.best_params_.keys():
-  print(x, ":", grid.best_params_[x])
-
-grid = RandomizedSearchCV(Pipeline(randomf_regres),
-                          n_iter=N_ITERS,
-                          cv=5,
-                          n_jobs=-1,
-                          param_distributions=param_grid_rf,
-                          iid=False)
-grid.fit(X_tra, y_tra)
-
-print("Mejor score total RandomForest Regresor: ", grid.best_score_)
-print("Mejor estimador RandomForest Regresor: ")
-for x in grid.best_params_.keys():
-  print(x, ":", grid.best_params_[x])
-
-# Hiperparámetros de Boosting Clasificador
-
-pipe = Pipeline(boosting_clasif)
-param_grid = {
-  'AdaBoost__n_estimators': [100, 500, 1000],
-  'AdaBoost__learning_rate': [0.5 * (i+1) for i in range(20)]
-}
-
-grid = RandomizedSearchCV(pipe,
-                          n_iter=N_ITERS,
-                          cv=5,
-                          n_jobs=-1,
-                          param_distributions=param_grid,
-                          iid=False)
-grid.fit(X_tra, y_tra_cls)
-
-print("Mejor score total AdaBoost Clasificador: ", grid.best_score_)
-print("Mejor estimador AdaBoost Clasificador: ")
-for x in grid.best_params_.keys():
-  print(x, ":", grid.best_params_[x])
-
-# Hiperparámetros de Boosting Regresor
-
-param_grid = {
-  'AdaBoost__n_estimators': [100, 500, 1000],
-  'AdaBoost__learning_rate': [0.5 * (i+1) for i in range(20)],
-  'AdaBoost__loss': ['linear', 'square', 'exponential']
-}
-
-grid = RandomizedSearchCV(Pipeline(boosting_regres),
-                          n_iter=N_ITERS,
-                          cv=5,
-                          n_jobs=-1,
-                          param_distributions=param_grid,
-                          iid=False)
-grid.fit(X_tra, y_tra)
-
-print("Mejor score total AdaBoost Regresor: ", grid.best_score_)
-print("Mejor estimador AdaBoost Regresor: ")
-for x in grid.best_params_.keys():
-  print(x, ":", grid.best_params_[x])
-
-for clasificador in clasificadores:
-  nombre = " → ".join(name for name, _ in clasificador.steps)
+for nombre, clasificador in clasificadores:
   with mensaje("Ajustando modelo: '{}'".format(nombre)):
     clasificador.fit(X_tra, y_tra_cls)
   estima_error_clasif(clasificador, X_tra, y_tra_cls, X_vad, y_vad_cls, nombre)
@@ -383,12 +288,11 @@ def estima_error_regresion(regresor, X_tra, y_tra, X_tes, y_tes, nombre):
     print("  R²   ({}): {:.3f}".format(datos, regresor.score(X, y)),
           end="\n\n")
 
-regresores = [dummy_regressor, svr_bare, svr_var_s,  regresor_randomf,
-            regresor_randomf_var_s, regresor_boost,
-            regresor_boost_var_s]
 
-for regresor in regresores:
-  nombre = " → ".join(name for name, _ in regresor.steps)
+regresores = [("Dummy", dummy_regressor), ("RandomForest", regresor_randomf),
+              ("AdaBoost", regresor_boost)]
+
+for nombre, regresor in regresores:
   with mensaje("Ajustando modelo: '{}'".format(nombre)):
     regresor.fit(X_tra, y_tra)
   estima_error_regresion(regresor, X_tra, y_tra, X_vad, y_vad, nombre)
