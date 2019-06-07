@@ -113,10 +113,11 @@ El problema a realizar puede tratarse desde dos enfoques principales:
 1. como un problema de **clasificación**, en el que clasificamos a los estudiantes en función de si están aprobados o no (esto es, si G3 es mayor o igual 10 o no) o
 2. como un problema de **regresión**, en el que intentamos predecir la nota de los estudiantes en función de sus características.
 
-Ambos enfoques tienen interés práctico: tanto clasificar a los estudiantes como hacer regresión puede ayudar a identificar posibles problemas en los estudiantes para mejorar su educación.
+En principio, el enfoque más claro es el de regresión.
+El modelo tiene más capacidad predictiva y es más general que si lo tratamos como un problema de clasificación. Sin embargo, debido a que los autores originales hacían un estudio desde ambas perspectivas, hemos decidido añadir la versión de clasificación para ver su funcionamiento.
 Un posible tercer enfoque es propuesto en el paper original donde se presenta el conjunto de datos es clasificar en 5 bloques asociados a las puntuaciones del sistema Erasmus, enfoque que no desarrollamos aquí.
 
-Hemos querido hacer los cuatro modelos de regresión debido a que hemos visto que tenía más sentido tratar las notas como un número en lugar de como un suspenso y aprobado. El modelo tiene más capacidad predictiva y es más general que si lo tratamos como un problema de clasificación. Sin embargo, debido a que los autores originales hacían un estudio desde ambas perspectivas, hemos decidido añadir (con tres modelos de los cuatro que ya usábamos en regresión) la versión de clasificación para ver qué tal funcionaba.
+Este documento desarrolla entonces ambos problemas, utilizando los mismos 4 tipos de modelos en cada problema, y comparando en los dos conjuntos de datos: el de portugués y el de matemáticas.
 
 # Preprocesado
 
@@ -172,15 +173,23 @@ Hemos indicado que las categorías se infieran de forma automática, que los val
 
 \newpage
 
-## Valoración del interés de variables y selección
+## Tratamiento de los datos
+
+Hemos identificado dos posibles tratamientos de los datos que pueden ayudar a clasificadores y regresores que describimos en esta sección.
+
+Estas técnicas son en principio útiles en la mayoría de los casos, sin embargo, hemos añadido la posibilidad en la validación cruzada que utilizamos para la selección de hiperparámetros de no realizar esta parte del proceso.
+
+Describimos a continuación ambas técnicas.
+  
+### Valoración del interés de variables y selección
 
 A la hora de la selección de variables hemos decidido eliminar aquellas características que den poca información. Esto lo hemos medido con la varianza y se ha implementado haciendo uso del objeto `VarianceThreshold`, que filtra todas las características que no sobrepasen cierto umbral de varianza.
 
-La hemos aplicado con una varianza del 0.3 y esto ha filtrado un total de 43 características de 58. Si el número de 58 características no coincide con el que estábamos comentando en la sección anterior del dataset original es debido a la transformación de las variables categóricas que se ha hecho justo anteriormente.
+La hemos aplicado con una varianza del 0.3 y esto ha filtrado algunas características, dejando en ambas clases un total de 43 características de 58. Si el número de 58 características no coincide con el que estábamos comentando en la sección anterior del dataset original es debido a la transformación de las variables categóricas que se ha hecho justo anteriormente, que aumenta el número de características para evitar inducir un orden en variables categóricas.
 
 Otro punto a tener en cuenta en este apartado ha sido no aplicar conscientemente PCA. Al principio lo consideramos como una opción, pero debido a que PCA se basa en combinaciones lineales y a la naturaleza de nuestro dataset (que contiene muchas variables categóricas que no tiene mucho sentido sumar entre sí), se ha decidido eliminar esta parte del preprocesado.
 
-## Normalización de variables
+### Normalización de variables
 
 Para poder trabajar con unas variables de la misma escala se ha procedido a normalizarlas con el objeto `StandardScaler`. Esto resta la media de cada característica y las escala de forma que tengan media 0 y varianza 1. De esta forma, todas las variables se encuentran centradas y en un rango similar, lo que facilita su manipulación y ayuda a los regresores y clasificadores que vamos a realizar.
 
@@ -192,11 +201,26 @@ Utilizaremos un conjunto de test para obtener una estimación del error real.
 Para separarlos utilizamos la función `train_test_split` de `sklearn.model_selection`.
 Utilizamos un 20% de los datos como test. El 20% ha sido elegido debido a que un quinto de los datos como test es un porcentaje recomendado a la hora de no quedarnos con excesivos datos de entrenamiento (ya que causa menos datos para poder validar) y no tener demasiados datos de validación o test (ya que entonces tendremos poco para entrenar).
 
-Además, para la estimación de los parámetros utilizaremos validación cruzada.
+Además, para la estimación de los hiperparámetros utilizaremos validación cruzada.
+Esto se describe en secciones posteriores.
 
-# Función de pérdida utilizada
+# Función de pérdida y error
 
-## Regresión
+En esta sección describimos las funciones de pérdida y error utilizadas.
+
+## Función de pérdida
+
+## Función de error
+
+### Clasificación
+
+Para la clasificación, el error es la proporción de ejemplos incorrectamente clasificados.
+
+Si $f: \mathcal{X} \to \mathcal{Y}$ es un clasificador, el error será
+$$\sum_i [f(\mathbf{x}_i) \neq y_i].$$
+Esta métrica puede calcularse como uno menos la *accuracy* del modelo.
+
+### Regresión
 
 En el caso de la regresión hemos utilizado el MSE, esto es, el error cuadrático medio, dado para una función $f:\mathcal{X} \to \mathcal{Y}$ por la expresión (salvo constante)
 $$\sum_i (f(\mathbf{x}_i) - y_i)^2.$$
@@ -204,9 +228,6 @@ Otra opción sería el uso del error absoluto medio.
 Nos hemos decantado por el error cuadrático dado que este penaliza con mayor severidad los *outliers*: el error crece de forma cuadrática en función de la distancia al valor inferido en lugar de de forma lineal.
 
 Para mostrar el error obtenido sin embargo hemos mostrado el RMSE (*Root Mean Squared Error*), es decir, la raíz del MSE, para que las unidades de medida coincidan con las de la variable a predecir (puntos de la nota) y así tengamos una interpretación más adecuada del mismo.
-
-## Clasificación
-
 
 
 # Selección de técnicas a utilizar
