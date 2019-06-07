@@ -165,24 +165,27 @@ La siguiente tabla muestra la clasificación de las variables.
 
 
 Para convertir los datos utilizamos el objeto `OneHotEncoder` de `sklearn.preprocessing`.
-Indicamos en una lista las variables categóricas,
-```python
-categorical = [0,1,3,4,5,8,9,10,11,15,16,17,18,19,20,21,22]
-```
-y creamos el objeto que codifica las mismas:
-```python
-encoder = OneHotEncoder(categories="auto",
-                        handle_unknown="error",
-                        categorical_features=categorical)
-```
-
-Hemos indicado que las categorías se infieran de forma automática, que los valores desconocidos den error y que las variables categóricas son las de la lista `categorical`
+Hemos indicado que las categorías se infieran de forma automática, que los valores desconocidos den error y que las variables categóricas son las de la lista `categorical`.
 
 \newpage
 
 ## Valoración del interés de variables y selección
 ## Normalización de variables
-# Función de pérdida
+
+# Función de pérdida utilizada
+
+## Regresión
+
+En el caso de la regresión hemos utilizado el MSE, esto es, el error cuadrático medio, dado para una función $f:\mathcal{X} \to \mathcal{Y}$ por la expresión (salvo constante)
+$$\sum_i (f(\mathbf{x}_i) - y_i)^2.$$
+Otra opción sería el uso del error absoluto medio.
+Nos hemos decantado por el error cuadrático dado que este penaliza con mayor severidad los *outliers*: el error crece de forma cuadrática en función de la distancia al valor inferido en lugar de de forma lineal.
+
+Para mostrar el error obtenido sin embargo hemos mostrado el RMSE (*Root Mean Squared Error*), es decir, la raíz del MSE, para que las unidades de medida coincidan con las de la variable a predecir (puntos de la nota) y así tengamos una interpretación más adecuada del mismo.
+
+## Clasificación
+
+<!--TODO-->
 
 # Selección de técnicas a utilizar
 
