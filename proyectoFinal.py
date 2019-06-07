@@ -7,30 +7,38 @@ Nombres Estudiantes:
   - Antonio Checa Molina
 """
 
+# Biblioteca estándar
 import csv
 import math
 import threading
 import time
 
+# NumPy
 import numpy as np
-import matplotlib.pyplot as plt
 import numpy.lib.recfunctions as rfn
 
+# Matplotlib
+import matplotlib.pyplot as plt
+
+# Sklearn (preprocesado)
 from sklearn.preprocessing import OneHotEncoder
 from sklearn.model_selection import train_test_split
 from sklearn.model_selection import RandomizedSearchCV
 from sklearn.feature_selection import VarianceThreshold
-from sklearn.decomposition import PCA
 from sklearn.pipeline import Pipeline
 from sklearn.preprocessing import StandardScaler
 
-from tempfile import mkdtemp
+# Sklearn (modelos)
+from sklearn.metrics import mean_squared_error
 from sklearn.ensemble import RandomForestClassifier, RandomForestRegressor
 from sklearn.ensemble import AdaBoostClassifier, AdaBoostRegressor
-from sklearn.metrics import mean_squared_error
-from sklearn.svm import SVR
+from sklearn.svm import SVR, SVC
 from sklearn.dummy import DummyClassifier, DummyRegressor
 
+
+#################################
+# FUNCIONES Y CLASES AUXILIARES #
+#################################
 
 class mensaje:
   """Clase que gestiona la impresión de mensajes de progreso.
@@ -69,10 +77,31 @@ class mensaje:
 
 
 def estima_error_clasif(clasificador, X_tra, y_tra, X_test, y_test, nombre):
-  print("Error de {} en training: {:.3f}".format(
-    nombre, 1 - clasificador.score(X_tra, y_tra)))
-  print("Error de {} en test: {:.3f}".format(
-    nombre, 1 - clasificador.score(X_test, y_test)))
+  """Estima diversos errores de un clasificador.
+  Debe haberse llamado previamente a la función fit del clasificador."""
+  print("Errores para clasificador {}".format(nombre))
+  print("  % incorrectos (training): {:.3f}".format(1 - clasificador.score(X_tra, y_tra)))
+  print("  % incorrectos (test): {:.3f}".format(1 - clasificador.score(X_test, y_test)))
+
+
+def estima_error_regresion(regresor, X_tra, y_tra, X_tes, y_tes, nombre):
+  """Estima diversos errores de un regresor.
+  Debe haberse llamado previamente a la función fit del regresor."""
+  print("Errores para regresor {}".format(nombre))
+  for datos, X, y in [("training", X_tra, y_tra), ("test", X_tes, y_tes)]:
+    y_pred = regresor.predict(X)
+    print("  RMSE ({}): {:.3f}".format(
+      datos, math.sqrt(mean_squared_error(y, y_pred))))
+    print("  R²   ({}): {:.3f}".format(datos, regresor.score(X, y)))
+
+def espera():
+  """Espera hasta que el usuario pulse una tecla."""
+  input("\n--- Pulsar tecla para continuar ---\n")
+
+
+########################################
+# CONSTANTES Y PARÁMETROS MODIFICABLES #
+########################################
 
 
 # Fijamos la semilla para tener resultados reproducibles
@@ -81,7 +110,8 @@ np.random.seed(0)
 # Localización de los archivos
 DATOS_MAT = "datos/student-mat.csv"
 DATOS_PT = "datos/student-por.csv"
-CACHE = mkdtemp()
+
+
 
 ####################
 # LECTURA DE DATOS #
@@ -93,7 +123,7 @@ features = [
   'Mjob', 'Fjob', 'reason', 'guardian', 'traveltime', 'studytime', 'failures',
   'schoolsup', 'famsup', 'paid', 'activities', 'nursery', 'higher', 'internet',
   'romantic', 'famrel', 'freetime', 'goout', 'Dalc', 'Walc', 'health',
-  'absences', 'G1', 'G2'
+  'absences','G1', 'G2'
 ]
 
 # Nombres de los datos leídos
@@ -169,6 +199,7 @@ X_mat = encoder.fit_transform(datos_mat[features].copy().view(
   (np.float64, len(features))))
 y_mat = datos_mat['G3'].copy().view((np.float64, 1))
 
+
 ###################
 # TRAINING Y TEST #
 ###################
@@ -177,6 +208,7 @@ X_tra, X_vad, y_tra, y_vad = train_test_split(X_mat,
                                               y_mat,
                                               test_size=0.2,
                                               random_state=1)
+
 
 ################
 # PREPROCESADO #
@@ -193,13 +225,22 @@ param_preprocesado = {"preprocesado": [varianceThreshold, None]}
 v = VarianceThreshold(VAR_T)
 v.fit(X_tra)
 print("El número de las variables eliminadas por el umbral de varianza son: ", len(np.where(v.variances_ < VAR_T)[0]), "/", len(v.variances_))
+
+
+#########################
 #########################
 # DEFINICIÓN DE MODELOS #
 #########################
+#########################
 
-params_rs = dict(n_iter=10, cv=5, n_jobs=-1, iid=False)
+params_rs = dict(n_iter=20, cv=5, n_jobs=-1, iid=False)
 
-# CLASIFICACIÓN
+#################
+# CLASIFICACIÓN #
+#################
+
+## DUMMY
+clasificador_dummy = DummyClassifier(strategy="stratified")
 
 ## RANDOM FOREST
 
@@ -209,12 +250,12 @@ param_rf = {
   'RandomForest__min_samples_split': [2, 10, 20],
   'RandomForest__min_samples_leaf': [1, 2, 5, 10],
 }
-
 randomf_clasif = [("RandomForest", RandomForestClassifier(random_state=0))]
 clasificador_randomf = RandomizedSearchCV(
-  Pipeline(preprocesado + randomf_clasif, memory=CACHE),
+  Pipeline(preprocesado + randomf_clasif),
   param_distributions={**param_preprocesado, **param_rf},
   **params_rs)
+
 
 ## BOOSTING
 
@@ -222,46 +263,65 @@ param_ab_cls = {
   'AdaBoost__n_estimators': [100, 500, 1000],
   'AdaBoost__learning_rate': [0.5 * (i+1) for i in range(20)]
 }
-
 boosting_clasif = [("AdaBoost", AdaBoostClassifier(random_state=0))]
 clasificador_boost = RandomizedSearchCV(
-  Pipeline(preprocesado + boosting_clasif, memory=CACHE),
+  Pipeline(preprocesado + boosting_clasif),
   param_distributions={**param_preprocesado, **param_ab_cls},
   **params_rs)
 
-clasificador_dummy = DummyClassifier(strategy="stratified")
 
-# REGRESIÓN
-# TODO: Parámetros para GridSearch
-# C, epsilon
-svr = [("SVM", SVR(kernel="rbf"))]
-svr_bare = Pipeline(svr)
-svr_var_s = Pipeline(preprocesado + svr)
+## SVM
+
+param_svm = {
+  "SVM__kernel": ["rbf", "poly"],
+  "SVM__C": [0.001, 0.01, 0.1, 1],
+  "SVM__gamma": [0.001, 0.01, 0.1, 1],
+}
+
+
+#############
+# REGRESIÓN #
+#############
+
+## DUMMY
 
 dummy_regressor = Pipeline([("Dummy", DummyRegressor(strategy="mean"))])
 
+## RANDOM FOREST
 randomf_regres = [("RandomForest", RandomForestRegressor(random_state=0))]
 regresor_randomf = RandomizedSearchCV(
-  Pipeline(preprocesado + randomf_regres, memory=CACHE),
+  Pipeline(preprocesado + randomf_regres),
   param_distributions={**param_preprocesado, **param_rf},
   **params_rs)
 
+## ADABOOST
 param_ab_reg = {**param_ab_cls,
                 'AdaBoost__loss': ['linear', 'square', 'exponential']}
 boosting_regres = [("AdaBoost", AdaBoostRegressor(random_state=0))]
 regresor_boost = RandomizedSearchCV(
-  Pipeline(preprocesado + boosting_regres, memory=CACHE),
+  Pipeline(preprocesado + boosting_regres),
   param_distributions={**param_preprocesado, **param_ab_reg},
   **params_rs)
 
-#################
-# CLASIFICACIÓN #
-#################
+## SVM
+svr = [("SVM", SVR())]
+clasificador_svm = RandomizedSearchCV(
+  Pipeline(preprocesado + svr),
+  param_distributions={**param_preprocesado, **param_svm},
+  **params_rs)
+
+
+#########################
+# ERROR (CLASIFICACIÓN) #
+#########################
 
 # Lista de clasificadores
-clasificadores = [("Dummy", clasificador_dummy),
-                  ("Random Forest", clasificador_randomf),
-                  ("AdaBoost", clasificador_boost)]
+clasificadores = [
+  ("Dummy", clasificador_dummy),
+  ("Random Forest", clasificador_randomf),
+  ("AdaBoost", clasificador_boost),
+  ("SVM", clasificador_svm)
+]
 
 y_tra_cls = y_tra.copy()
 y_tra_cls[y_tra_cls < 10] = -1
@@ -275,28 +335,22 @@ for nombre, clasificador in clasificadores:
   with mensaje("Ajustando modelo: '{}'".format(nombre)):
     clasificador.fit(X_tra, y_tra_cls)
   estima_error_clasif(clasificador, X_tra, y_tra_cls, X_vad, y_vad_cls, nombre)
-
-#############
-# REGRESIÓN #
-#############
+  espera()
 
 
-def estima_error_regresion(regresor, X_tra, y_tra, X_tes, y_tes, nombre):
-  """Estima diversos errores de un regresor.
-  Debe haberse llamado previamente a la función fit del regresor."""
-  print("Errores para regresor {}".format(nombre))
-  for datos, X, y in [("training", X_tra, y_tra), ("test", X_tes, y_tes)]:
-    y_pred = regresor.predict(X)
-    print("  RMSE ({}): {:.3f}".format(
-      datos, math.sqrt(mean_squared_error(y, y_pred))))
-    print("  R²   ({}): {:.3f}".format(datos, regresor.score(X, y)),
-          end="\n\n")
+#####################
+# ERROR (REGRESIÓN) #
+#####################
 
-
-regresores = [("Dummy", dummy_regressor), ("RandomForest", regresor_randomf),
-              ("AdaBoost", regresor_boost)]
+regresores = [
+  ("Dummy", dummy_regressor),
+  ("RandomForest", regresor_randomf),
+  ("AdaBoost", regresor_boost),
+  ("SVM", regresor_svm)
+]
 
 for nombre, regresor in regresores:
   with mensaje("Ajustando modelo: '{}'".format(nombre)):
     regresor.fit(X_tra, y_tra)
   estima_error_regresion(regresor, X_tra, y_tra, X_vad, y_vad, nombre)
+  espera()
