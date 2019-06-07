@@ -201,28 +201,6 @@ preprocesado_s_pca = [("Escalado", StandardScaler()),
 randomf_clasif = [("RandomForest",
                    RandomForestClassifier())]
 
-pipe = Pipeline(randomf_clasif)
-
-N_ESTIMATORS_OPTIONS = [100, 500, 1000]
-MAX_DEPTH_OPTIONS = [10, 50, 100]
-MIN_SAMPLES_SPLIT_OPTIONS = [2, 10, 20]
-MIN_SAMPLES_LEAF_OPTIONS = [1, 2, 5, 10]
-
-param_grid = {
-        'RandomForest__n_estimators': N_ESTIMATORS_OPTIONS,
-        'RandomForest__max_depth': MAX_DEPTH_OPTIONS,
-        'RandomForest__min_samples_split': MIN_SAMPLES_SPLIT_OPTIONS,
-        'RandomForest__min_samples_leaf': MIN_SAMPLES_LEAF_OPTIONS
-    }
-
-grid = RandomizedSearchCV(pipe, n_iter = 50, cv=5, n_jobs=-1, param_distributions=param_grid, iid=False)
-grid.fit(X_tra, y_tra)
-
-print("Mejor score total: ", grid.best_score_)
-print("Mejor estimador: ")
-for x in grid.best_params_.keys():
-    print(x,":", grid.best_params_[x])
-
 
 clasificador_randomf = Pipeline(randomf_clasif, memory = CACHE)
 clasificador_randomf_pca_s = Pipeline(preprocesado_pca_s +
@@ -259,6 +237,31 @@ y_tra_cls[y_tra_cls >= 10] = 1
 y_vad_cls = y_vad.copy()
 y_vad_cls[y_vad_cls < 10] = -1
 y_vad_cls[y_vad_cls >= 10] = 1
+
+
+# Hiperparámetros de RF
+
+pipe = Pipeline(randomf_clasif)
+
+N_ESTIMATORS_OPTIONS = [100, 500, 1000]
+MAX_DEPTH_OPTIONS = [10, 50, 100]
+MIN_SAMPLES_SPLIT_OPTIONS = [2, 10, 20]
+MIN_SAMPLES_LEAF_OPTIONS = [1, 2, 5, 10]
+
+param_grid = {
+        'RandomForest__n_estimators': N_ESTIMATORS_OPTIONS,
+        'RandomForest__max_depth': MAX_DEPTH_OPTIONS,
+        'RandomForest__min_samples_split': MIN_SAMPLES_SPLIT_OPTIONS,
+        'RandomForest__min_samples_leaf': MIN_SAMPLES_LEAF_OPTIONS
+    }
+
+grid = RandomizedSearchCV(pipe, n_iter = 10, cv=5, n_jobs=-1, param_distributions=param_grid, iid=False)
+grid.fit(X_tra, y_tra_cls)
+
+print("Mejor score total: ", grid.best_score_)
+print("Mejor estimador: ")
+for x in grid.best_params_.keys():
+    print(x,":", grid.best_params_[x])
 
 
 for clasificador in clasificadores:
