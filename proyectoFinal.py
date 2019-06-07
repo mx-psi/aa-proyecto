@@ -317,9 +317,9 @@ param_svm = {
   "SVM__C": [0.01, 0.1, 1, 2],
   "SVM__gamma": [0.001, 0.01, 0.1, 1],
 }
-svr = [("SVM", SVR(kernel="poly"))]
+svc = [("SVM", SVC(kernel="poly"))]
 clasificador_svm = RandomizedSearchCV(
-  Pipeline(preprocesado + svr),
+  Pipeline(preprocesado + svc),
   param_distributions={**param_preprocesado, **param_svm},
   **params_rs)
 
@@ -395,7 +395,7 @@ regresor_boost = RandomizedSearchCV(
   **params_rs)
 
 ## SVM
-svc = [("SVC", SVC(kernel="poly"))]
+svr = [("SVM", SVR(kernel="poly"))]
 regresor_svm = RandomizedSearchCV(
   Pipeline(preprocesado + svr),
   param_distributions={**param_preprocesado, **param_svm},
