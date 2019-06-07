@@ -18,6 +18,7 @@ from sklearn.preprocessing import OneHotEncoder
 from sklearn.model_selection import train_test_split
 from sklearn.model_selection import GridSearchCV
 from sklearn.model_selection import RandomizedSearchCV
+from sklearn.feature_selection import VarianceThreshold
 from sklearn.decomposition import PCA
 from sklearn.pipeline import Pipeline
 from sklearn.preprocessing import StandardScaler
@@ -189,11 +190,9 @@ X_tra, X_vad, y_tra, y_vad = train_test_split(X_mat,
 
 # SELECCIÓN DE CARACTERÍSTICAS
 
-preprocesado_pca_s = [("PCA", PCA(n_components=0.95)),
+preprocesado_var_s = [("EliminarVarBajas", VarianceThreshold(0.5)),
                       ("Escalado", StandardScaler())]
 
-preprocesado_s_pca = [("Escalado", StandardScaler()),
-                      ("PCA", PCA(n_components=0.95))]
 
 #########################
 # DEFINICIÓN DE MODELOS #
@@ -213,15 +212,11 @@ boosting_clasif_improv = [("AdaBoost",
                    AdaBoostClassifier(random_state = 0, n_estimators = 100, learning_rate = 4.5))]
 
 clasificador_randomf = Pipeline(randomf_clasif_improv, memory = CACHE)
-clasificador_randomf_pca_s = Pipeline(preprocesado_pca_s +
-                                      randomf_clasif_improv, memory = CACHE)
-clasificador_randomf_s_pca = Pipeline(preprocesado_s_pca +
+clasificador_randomf_var_s = Pipeline(preprocesado_var_s +
                                       randomf_clasif_improv, memory = CACHE)
 
 clasificador_boost = Pipeline(boosting_clasif_improv, memory = CACHE)
-clasificador_boost_pca_s = Pipeline(preprocesado_pca_s +
-                                      boosting_clasif_improv, memory = CACHE)
-clasificador_boost_s_pca = Pipeline(preprocesado_s_pca +
+clasificador_boost_var_s = Pipeline(preprocesado_var_s +
                                       boosting_clasif_improv, memory = CACHE)
 
 
@@ -233,8 +228,7 @@ clasificador_dummy = Pipeline([("Dummy", DummyClassifier(strategy="stratified"))
 # C, epsilon
 svr = [("SVM", SVR(kernel = "rbf"))]
 svr_bare = Pipeline(svr)
-svr_pca_s = Pipeline(preprocesado_pca_s + svr)
-svr_s_pca = Pipeline(preprocesado_s_pca + svr)
+svr_var_s = Pipeline(preprocesado_var_s + svr)
 dummy_regressor = Pipeline([("Dummy", DummyRegressor(strategy="mean"))])
 
 randomf_regres = [("RandomForest",
@@ -251,15 +245,11 @@ boosting_regres_improv = [("AdaBoost",
                    AdaBoostRegressor(random_state = 0, n_estimators = 100, loss = 'square', learning_rate = 1))]
 
 regresor_randomf = Pipeline(randomf_regres_improv, memory = CACHE)
-regresor_randomf_pca_s = Pipeline(preprocesado_pca_s +
-                                      randomf_regres_improv, memory = CACHE)
-regresor_randomf_s_pca = Pipeline(preprocesado_s_pca +
+regresor_randomf_var_s = Pipeline(preprocesado_var_s +
                                       randomf_regres_improv, memory = CACHE)
 
 regresor_boost = Pipeline(boosting_regres_improv, memory = CACHE)
-regresor_boost_pca_s = Pipeline(preprocesado_pca_s +
-                                      boosting_regres_improv, memory = CACHE)
-regresor_boost_s_pca = Pipeline(preprocesado_s_pca +
+regresor_boost_var_s = Pipeline(preprocesado_var_s +
                                       boosting_regres_improv, memory = CACHE)
 
 
@@ -269,12 +259,10 @@ regresor_boost_s_pca = Pipeline(preprocesado_s_pca +
 
 # Lista de clasificadores
 clasificadores = [clasificador_randomf,
-                  clasificador_randomf_pca_s,
-                  clasificador_randomf_s_pca,
+                  clasificador_randomf_var_s,
                   clasificador_dummy,
                   clasificador_boost,
-                  clasificador_boost_pca_s,
-                  clasificador_boost_s_pca]
+                  clasificador_boost_var_s]
 
 y_tra_cls = y_tra.copy()
 y_tra_cls[y_tra_cls < 10] = -1
@@ -411,9 +399,9 @@ def estima_error_regresion(regresor, X_tra, y_tra, X_tes, y_tes, nombre):
           end="\n\n")
 
 
-regresores = [svr_bare, svr_pca_s, svr_s_pca, dummy_regressor, regresor_randomf,
-            regresor_randomf_pca_s, regresor_randomf_s_pca, regresor_boost,
-            regresor_boost_pca_s, regresor_boost_s_pca]
+regresores = [svr_bare, svr_var_s, dummy_regressor, regresor_randomf,
+            regresor_randomf_var_s, regresor_boost,
+            regresor_boost_var_s]
 
 for regresor in regresores:
   nombre = " → ".join(name for name, _ in regresor.steps)
