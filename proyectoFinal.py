@@ -10,7 +10,7 @@ Nombres Estudiantes:
 import csv
 import numpy as np
 import matplotlib.pyplot as plt
-
+import math
 import threading
 import time
 import numpy.lib.recfunctions as rfn
@@ -20,8 +20,11 @@ from sklearn.decomposition import PCA
 from sklearn.pipeline import Pipeline
 from sklearn.preprocessing import StandardScaler
 
+from tempfile import mkdtemp
 from sklearn.ensemble import RandomForestClassifier, RandomForestRegressor
+from sklearn.metrics import mean_squared_error
 from sklearn.svm import SVR
+from sklearn.dummy import DummyClassifier, DummyRegressor
 
 
 class mensaje:
@@ -73,6 +76,7 @@ np.random.seed(0)
 # Localización de los archivos
 DATOS_MAT = "datos/student-mat.csv"
 DATOS_PT = "datos/student-por.csv"
+CACHE = mkdtemp()
 
 ####################
 # LECTURA DE DATOS #
@@ -164,22 +168,16 @@ encoder =             OneHotEncoder(handle_unknown="error",
 
 # Datos leídos como arrays NumPy compatibles con scikitlearn
 X_mat = encoder.fit_transform(datos_mat[features_C].copy().view((np.float64, len(features_C))))
-
 y_mat = datos_mat['G3'].copy().view((np.float64, 1))
-y_mat_cls = y_mat.copy()
-y_mat_cls[y_mat_cls < 10] = -1
-y_mat_cls[y_mat_cls >= 10] = 1
 
 ###################
 # TRAINING Y TEST #
 ###################
 
 X_tra, X_vad, y_tra, y_vad = train_test_split(X_mat,
-                                              y_mat_cls,
+                                              y_mat,
                                               test_size=0.2,
                                               random_state=1)
-
-print(X_tra.shape, X_vad.shape)
 
 ################
 # PREPROCESADO #
@@ -197,30 +195,53 @@ preprocesado_s_pca = [("Escalado", StandardScaler()),
 # DEFINICIÓN DE MODELOS #
 #########################
 
+
+# CLASIFICACIÓN
 randomf_clasif = [("Random Forest",
                    RandomForestClassifier(n_estimators=1000, max_features=5))]
 
+clasificador_randomf = Pipeline(randomf_clasif, memory = CACHE)
+clasificador_randomf_pca_s = Pipeline(preprocesado_pca_s +
+                                      randomf_clasif, memory = CACHE)
+clasificador_randomf_s_pca = Pipeline(preprocesado_s_pca +
+                                      randomf_clasif, memory = CACHE)
+
+clasificador_dummy = Pipeline([("Dummy", DummyClassifier(strategy="stratified"))])
+
+
+# REGRESIÓN
+# TODO: Parámetros para GridSearch
+# C, epsilon
+svr = [("SVM", SVR(kernel = "rbf"))]
+svr_bare = Pipeline(svr)
+svr_pca_s = Pipeline(preprocesado_pca_s + svr)
+svr_s_pca = Pipeline(preprocesado_s_pca + svr)
+dummy_regressor = Pipeline([("Dummy", DummyRegressor(strategy="mean"))])
 
 #################
 # CLASIFICACIÓN #
 #################
 
-clasificador_randomf = Pipeline(randomf_clasif)
-clasificador_randomf_pca_s = Pipeline(preprocesado_pca_s +
-                                      randomf_clasif)
-clasificador_randomf_s_pca = Pipeline(preprocesado_s_pca +
-                                      randomf_clasif)
-
 # Lista de clasificadores
 clasificadores = [clasificador_randomf,
                   clasificador_randomf_pca_s,
-                  clasificador_randomf_s_pca]
+                  clasificador_randomf_s_pca,
+                  clasificador_dummy]
+
+y_tra_cls = y_tra.copy()
+y_tra_cls[y_tra_cls < 10] = -1
+y_tra_cls[y_tra_cls >= 10] = 1
+
+y_vad_cls = y_vad.copy()
+y_vad_cls[y_vad_cls < 10] = -1
+y_vad_cls[y_vad_cls >= 10] = 1
+
 
 for clasificador in clasificadores:
   nombre = " → ".join(name for name, _ in clasificador.steps)
   with mensaje("Ajustando modelo: '{}'".format(nombre)):
-    clasificador.fit(X_tra, y_tra)
-  estima_error_clasif(clasificador, X_tra, y_tra, X_vad, y_vad, nombre)
+    clasificador.fit(X_tra, y_tra_cls)
+  estima_error_clasif(clasificador, X_tra, y_tra_cls, X_vad, y_vad_cls, nombre)
 
 
 # Por el error parece que el mejor es S-PCA, es decir, escalar y luego hacer PCA
@@ -229,3 +250,23 @@ for clasificador in clasificadores:
 #############
 # REGRESIÓN #
 #############
+
+def estima_error_regresion(regresor, X_tra, y_tra, X_tes, y_tes, nombre):
+  """Estima diversos errores de un regresor.
+  Debe haberse llamado previamente a la función fit del regresor."""
+  print("Errores para regresor {}".format(nombre))
+  for datos, X, y in [("training", X_tra, y_tra), ("test", X_tes, y_tes)]:
+    y_pred = regresor.predict(X)
+    print("  RMSE ({}): {:.3f}".format(
+      datos, math.sqrt(mean_squared_error(y, y_pred))))
+    print("  R²   ({}): {:.3f}".format(datos, regresor.score(X, y)),
+          end="\n\n")
+
+
+regresores = [svr_bare, svr_pca_s, svr_s_pca, dummy_regressor]
+
+for regresor in regresores:
+  nombre = " → ".join(name for name, _ in regresor.steps)
+  with mensaje("Ajustando modelo: '{}'".format(nombre)):
+    regresor.fit(X_tra, y_tra)
+  estima_error_regresion(clasificador, X_tra, y_tra, X_vad, y_vad, nombre)
