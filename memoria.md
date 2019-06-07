@@ -204,11 +204,77 @@ Utilizamos un 20% de los datos como test. El 20% ha sido elegido debido a que un
 Además, para la estimación de los hiperparámetros utilizaremos validación cruzada.
 Esto se describe en secciones posteriores.
 
+# Selección de técnicas a utilizar
+
+Como se describía en la sección de enfoques y objetivos, hemos utilizado 4 modelos tanto en la versión de regresión del problema como en su versión de clasificación.
+Describimos aquí también los casos base de comparación que hemos utilizado.
+Estos son:
+
+*Dummy*
+: El modelo *dummy* es un caso base de comparación. No realiza realmente ningún ajuste, sino que utiliza alguna 
+  estimación como la media (en el caso de la regresión) o una clasificación estratificada aleatoria (en el caso de 
+  la clasificación). No utiliza la información de los datos de test en ningún momento, y sirve como caso para 
+  comparar.
+
+Lineal
+: Este modelo lineal está ajustado con gradiente descendente estocástico.
+  La función de pérdida utilizada en el caso de la **clasificación** es la *hinge*, esto es 
+  $$\max(0, 1- yf(\mathbf{x})),$$
+  que nos permite minimizar como en el caso de las máquinas de vectores soporte con kernel lineal.
+  En el caso de **regresión**, la función de pérdida es el error cuadrático (regularizado).
+  Ya que esta es la métrica que utilizamos para medir el error hemos pensado que era lo que tenía más sentido.
+  Aplicamos regularización en ambos casos, que describimos en la sección de [Regularización].
+  
+Random Forest
+: Aplicamos la técnica de *Random Forest* tanto para clasificación como para regresión.
+  Esta técnica utiliza un conjunto de árboles que genera de forma que tengan diversidad y promedia sus resultados.
+  Este parece un modelo con bastante sentido para ser utilizado en este problema, dada la alta cantidad
+  de variables categóricas, con las que Random Forest puede dar buenos resultados.
+  Sus hiperparámetros (número de árboles, profundidad máxima y mínimo número de muestras en nodos del árbol)
+  son seleccionados por una búsqueda descrita en la sección [Ajuste de hiperparámetros].
+
+AdaBoost
+: Aplicamos una técnica de *boosting*, que combina estimadores débiles.
+  Los estimadores débiles que utilizamos son los que vienen por defecto en `sklearn`, esto es,
+  en el caso de **clasificación** estimadores `stump`: árboles de decisión con profundidad 1, y 
+  en el caso de **regresión**  árboles con profundidad máxima 3.
+  De nuevo, como en el caso anterior, esta técnica parece tener bastante sentido para este tipo de problema.
+  El número de estimadores y el *learning rate* se seleccionan en el [Ajuste de hiperparámetros].
+  
+SVM
+: Utilizamos máquinas de vectores de soporte tanto para regresión como para clasificación.
+  El kernel utilizado es RBF gaussiano, que puede dar buenos resultados.
+  En la sección [Ajuste de hiperparámetros] describimos cómo ajustamos la regularización y el coeficiente del kernel.
+
+
 # Función de pérdida y error
 
 En esta sección describimos las funciones de pérdida y error utilizadas.
 
-## Función de pérdida
+## Funciones de pérdida
+
+Cada modelo tiene su propia función de pérdida, que describimos a continuación.
+
+Lineal
+: Como se describió en la sección anterior, utilizamos la función *hinge* en el caso de clasificación (lo que lo 
+  hace similar a una máquina de vectores de soporte) y el error medio cuadrático en el caso de la regresión.
+  
+Random Forest
+: En el caso de la regresión tiene sentido hablar de una función de pérdida.
+  En este caso hemos optado por el valor por defecto ya que coincide con la función MSE que utilizamos para medir el 
+  error final.
+
+AdaBoost
+: Para la **clasificación**, si bien no lo especificamos de forma explícita, la función de pérdida que utiliza el 
+  método AdaBoost internamente es una función de pérdida exponencial, que penaliza con más fuerza los ejemplos 
+  negativos que los positivos.
+  En el caso de la **regresión**, la función de pérdida la seleccionamos de entre las disponibles: lineal, 
+  cuadrática o exponencial. Hemos hecho esto porque, si bien la función de error es cuadrática, la función de 
+  pérdida que suele utilizarse con este regresor es la lineal, por lo que queríamos probar las posibilidades.
+  
+SVM
+: La función de pérdida en este caso es la *hinge*, pero debido a que utilizamos un kernel no lineal (en concreto el 
+  RBF gaussiano), esta no es la misma función de pérdida a efectos prácticos que la del caso lineal.
 
 ## Función de error
 
@@ -230,7 +296,13 @@ Nos hemos decantado por el error cuadrático dado que este penaliza con mayor se
 Para mostrar el error obtenido sin embargo hemos mostrado el RMSE (*Root Mean Squared Error*), es decir, la raíz del MSE, para que las unidades de medida coincidan con las de la variable a predecir (puntos de la nota) y así tengamos una interpretación más adecuada del mismo.
 
 
-# Selección de técnicas a utilizar
+# Aplicación de las técnicas
+
+## Regularización
+
+En esta sección describimos la regularización de cada modelo.
+
+## Ajuste de hiperparámetros
 
 Para la realización de la regresión y de la clasificación hemos realizado los siguientes cuatro modelos, cada uno con sus respectivos parámetros:
 
@@ -257,11 +329,6 @@ Para esto, además, es necesario indicar el número de iteraciones de parámetro
 Hay que notar que el objeto `RandomizedSearchCV` aplica cross-validation con el número de particiones que le digamos. En nuestro caso han sido cinco. Es importante para poder validar que el resultado ha sido correcto utilizar una validación out-of-bag, es decir, con elementos que no habíamos usado para entrenar, de esta forma obtenemos una medida más certera de lo buena que es la predicción.
 
 Por último, hemos indicado que use tantos procesadores como pueda. Una de las ventajas de este método es que permite paralelizar el proceso, nótese que una ejecución de los modelos con diferentes parámetros es totalmente independiente de las otras ejecuciones, por lo que si podemos aprovechar este hecho para acelerar la búsqueda de buenos parámetros, mejor.
-
-
-# Aplicación de las técnicas
-
-## Regularización
 
 # Valoración del resultado
 
