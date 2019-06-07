@@ -155,19 +155,35 @@ datos = rfn.join_by([
                     jointype="inner")
 
 # Datos leídos como arrays NumPy compatibles con scikitlearn
-X_mat = datos_mat[features_A].copy().view((np.float64, len(features_A)))
+X_mat = datos_mat[features_C].copy().view((np.float64, len(features_C)))
+
 y_mat = datos_mat['G3'].copy().view((np.float64, 1))
-y_mat[y_mat < 10] = -1
-y_mat[y_mat >= 10] = 1
+y_mat_cls = y_mat.copy()
+y_mat_cls[y_mat_cls < 10] = -1
+y_mat_cls[y_mat_cls >= 10] = 1
+
+###################
+# TRAINING Y TEST #
+###################
+
+X_tra, X_vad, y_tra, y_vad = train_test_split(X_mat,
+                                              y_mat_cls,
+                                              test_size=0.2,
+                                              random_state=1)
 
 ################
 # PREPROCESADO #
 ################
 
-X_tra, X_vad, y_tra, y_vad = train_test_split(X_mat,
-                                              y_mat,
-                                              test_size=0.2,
-                                              random_state=1)
+# CODIFICACIÓN DE VARIABLES CATEGÓRICAS
+
+# Codificador en variables one-hot
+encoder = [("1-hot",
+            OneHotEncoder(handle_unknown="error",
+                          sparse=False,
+                          categorical_features=categorical))]
+
+# SELECCIÓN DE CARACTERÍSTICAS
 
 preprocesado_pca_s = [("PCA", PCA(n_components=0.95)),
                       ("escalado", StandardScaler())]
@@ -175,16 +191,23 @@ preprocesado_pca_s = [("PCA", PCA(n_components=0.95)),
 preprocesado_s_pca = [("escalado", StandardScaler()),
                       ("PCA", PCA(n_components=0.95))]
 
-preprocesador_pca_s = Pipeline(preprocesado_pca_s)
-preprocesador_s_pca = Pipeline(preprocesado_s_pca)
+#########################
+# DEFINICIÓN DE MODELOS #
+#########################
 
 randomf_clasif = [("Random Forest",
                    RandomForestClassifier(n_estimators=1000, max_features=5))]
 
-clasificador_randomf = Pipeline(randomf_clasif)
 
-clasificador_randomf_pca_s = Pipeline(preprocesado_pca_s + randomf_clasif)
-clasificador_randomf_s_pca = Pipeline(preprocesado_s_pca + randomf_clasif)
+#################
+# CLASIFICACIÓN #
+#################
+
+clasificador_randomf = Pipeline(encoder + randomf_clasif)
+clasificador_randomf_pca_s = Pipeline(encoder + preprocesado_pca_s +
+                                      randomf_clasif)
+clasificador_randomf_s_pca = Pipeline(encoder + preprocesado_s_pca +
+                                      randomf_clasif)
 
 with mensaje("Ajustando modelo de clasificación Random Forest"):
   clasificador_randomf.fit(X_tra, y_tra)
@@ -212,11 +235,3 @@ estima_error_clasif(clasificador_randomf_s_pca, X_tra, y_tra, X_vad, y_vad,
 
 # Por el error parece que el mejor es S-PCA, es decir, escalar y luego hacer PCA
 # Los errores siguen siendo tremendamente altos, así que tampoco me fiaría mucho
-
-# CODIFICACIÓN DE VARIABLES CATEGÓRICAS
-
-# Codificador en variables one-hot
-encoder = OneHotEncoder(handle_unknown="error",
-                        categorical_features=categorical)
-
-encoder.fit(X_tra)
