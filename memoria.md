@@ -170,7 +170,16 @@ Hemos indicado que las categorías se infieran de forma automática, que los val
 \newpage
 
 ## Valoración del interés de variables y selección
+
+A la hora de la selección de variables hemos decidido eliminar aquellas características que den poca información. Esto lo hemos medido con la varianza y se ha implementado haciendo uso del objeto `VarianceThreshold`, que filtra todas las características que no sobrepasen cierto umbral de varianza.
+
+La hemos aplicado con una varianza del 0.3 y esto ha filtrado un total de 43 características de 58. Si el número de 58 características no coincide con el que estábamos comentando en la sección anterior del dataset original es debido a la transformación de las variables categóricas que se ha hecho justo anteriormente. 
+
+Otro punto a tener en cuenta en este apartado ha sido no aplicar conscientemente PCA. Al principio lo consideramos como una opción, pero debido a que PCA se basa en combinaciones lineales y a la naturaleza de nuestro dataset (que contiene muchas variables categóricas que no tiene mucho sentido sumar entre sí), se ha decidido eliminar esta parte del preprocesado.
+
 ## Normalización de variables
+
+Para poder trabajar con unas variables de la misma escala se ha procedido a normalizarlas con el objeto `StandardScaler`. Esto resta la media de cada característica y las escala de forma que tengan media 0 y varianza 1. De esta forma, todas las variables
 ## Conjuntos de training, validación y test
 
 Los conjuntos de datos que se proporcionan no están separados en conjuntos de training y test.

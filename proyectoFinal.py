@@ -79,9 +79,14 @@ class mensaje:
 def estima_error_clasif(clasificador, X_tra, y_tra, X_test, y_test, nombre):
   """Estima diversos errores de un clasificador.
   Debe haberse llamado previamente a la función fit del clasificador."""
+  c_sc_tra = clasificador.score(X_tra, y_tra)
+  c_sc_test = clasificador.score(X_test, y_test)
   print("Errores para clasificador {}".format(nombre))
-  print("  % incorrectos (training): {:.3f}".format(1 - clasificador.score(X_tra, y_tra)))
-  print("  % incorrectos (test): {:.3f}".format(1 - clasificador.score(X_test, y_test)))
+  print("  % incorrectos (training): {:.3f}".format(1 - c_sc_tra))
+  print("  % incorrectos (test): {:.3f}".format(1 - c_sc_test))
+  with open('datos_finales.csv', 'a') as csvfile:
+    datos_finales = csv.writer(csvfile)
+    datos_finales.writerow(["Clasificador",nombre, c_sc_tra, c_sc_test])
 
 
 def estima_error_regresion(regresor, X_tra, y_tra, X_tes, y_tes, nombre):
@@ -90,9 +95,13 @@ def estima_error_regresion(regresor, X_tra, y_tra, X_tes, y_tes, nombre):
   print("Errores para regresor {}".format(nombre))
   for datos, X, y in [("training", X_tra, y_tra), ("test", X_tes, y_tes)]:
     y_pred = regresor.predict(X)
+    c_sc = math.sqrt(mean_squared_error(y, y_pred))
     print("  RMSE ({}): {:.3f}".format(
-      datos, math.sqrt(mean_squared_error(y, y_pred))))
+      datos, c_sc_tra))
     print("  R²   ({}): {:.3f}".format(datos, regresor.score(X, y)))
+    with open('datos_finales.csv', 'a') as csvfile:
+      datos_finales = csv.writer(csvfile)
+      datos_finales.writerow(["Regresor", nombre, c_sc])
 
 def espera():
   """Espera hasta que el usuario pulse una tecla."""
@@ -199,6 +208,11 @@ X_mat = encoder.fit_transform(datos_mat[features].copy().view(
   (np.float64, len(features))))
 y_mat = datos_mat['G3'].copy().view((np.float64, 1))
 
+# Vacío del archivo datos_finales.csv
+
+f = open("datos_finales.csv","w+")
+f.close()
+
 
 ###################
 # TRAINING Y TEST #
@@ -216,7 +230,7 @@ X_tra, X_vad, y_tra, y_vad = train_test_split(X_mat,
 
 # SELECCIÓN DE CARACTERÍSTICAS
 
-VAR_T = 0.5
+VAR_T = 0.3
 varianceThreshold = Pipeline([("EliminarVarBajas", VarianceThreshold(VAR_T)),
                               ("Escalado", StandardScaler())])
 preprocesado = [("preprocesado", None)]
