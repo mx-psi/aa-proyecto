@@ -300,7 +300,23 @@ Para mostrar el error obtenido sin embargo hemos mostrado el RMSE (*Root Mean Sq
 
 ## Regularización
 
-La regularización ha sido aplicada 
+En esta sección describimos la regularización de los modelos.
+
+Lineal
+: El modelo lineal utiliza una regularización con función l2.
+  Hemos elegido este tipo de regularización porque penaliza con más fuerza valores muy grandes en comparación
+  con la regularización l1.
+  El parámetro de regularización se ajusta como se describe en la siguiente sección.
+
+Random Forest y AdaBoost
+: En estos estimadores no se utiliza una función de regularización de forma explícita, si bien la limitación
+  del número máximo de estimadores débiles y de la complejidad de estos 
+  sí que limita el sobreajuste que puedan sufrir estos estimadores.
+  Estos parámetros se ajustan como se describe en la siguiente sección.
+  
+SVM
+: Para estos estimadores, el parámetro `C` especifica la penalización del término de error, que no puede ser 
+  modificado. Este parámetro se ajusta como se describe en la siguiente sección.
 
 ## Ajuste de hiperparámetros
 
