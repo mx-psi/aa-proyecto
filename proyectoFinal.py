@@ -29,10 +29,11 @@ from sklearn.preprocessing import StandardScaler
 
 # Sklearn (modelos)
 from sklearn.metrics import mean_squared_error, make_scorer
+from sklearn.linear_model import SGDClassifier, SGDRegressor
 from sklearn.ensemble import RandomForestClassifier, RandomForestRegressor
 from sklearn.ensemble import AdaBoostClassifier, AdaBoostRegressor
-from sklearn.svm import SVR, SVC
 from sklearn.dummy import DummyClassifier, DummyRegressor
+from sklearn.svm import SVC, SVR
 
 
 #################################
@@ -200,6 +201,7 @@ tipo = {'names': names, 'formats': [np.float64] * len(names)}
 datos_mat = np.array(datos_brutos_mat, dtype=tipo)
 datos_pt = np.array(datos_brutos_pt, dtype=tipo)
 
+# Conjuntos de datos
 datasets = [
   ("Matemáticas", datos_mat),
   ("Portugués", datos_pt)
@@ -263,7 +265,23 @@ params_rs = dict(n_iter=20, cv=5, n_jobs=-1, iid=False)
 #################
 
 ## DUMMY
+
 clasificador_dummy = DummyClassifier(strategy="stratified")
+
+
+## LINEAL (SGDClassifier)
+
+param_lin = {
+  "Lineal__alpha": [0.0001, 0.001, 0.01],
+  "Lineal__learning_rate": ["optimal", "invscaling"],
+  "Lineal__eta0": [0.0001, 0.001, 0.01]
+}
+lin_clasif = [("Lineal", SGDClassifier(loss="hinge", penalty="l2", max_iter=1000))]
+clasificador_lineal = RandomizedSearchCV(
+  Pipeline(preprocesado + lin_clasif),
+  param_distributions={**param_preprocesado, **param_lin},
+  **params_rs)
+
 
 ## RANDOM FOREST
 
@@ -306,14 +324,57 @@ clasificador_svm = RandomizedSearchCV(
   **params_rs)
 
 
+# Lista de clasificadores
+clasificadores = [
+  ("Dummy", clasificador_dummy),
+  ("Lineal", clasificador_lineal),
+  ("Random Forest", clasificador_randomf),
+  ("AdaBoost", clasificador_boost),
+  ("SVM", clasificador_svm)
+]
+
+
+
+#########################
+# ERROR (CLASIFICACIÓN) #
+#########################
+
+for dataset, X_tra, X_vad, y_tra, y_vad in train_test:
+  imprime_titulo("CLASIFICACIÓN (APROBADO/SUSPENSO) PARA {}".format(dataset.upper()))
+
+  # Genera etiquetas de aprobado y suspenso
+  y_tra_cls = y_tra.copy()
+  y_tra_cls[y_tra_cls < 10] = -1
+  y_tra_cls[y_tra_cls >= 10] = 1
+
+  y_vad_cls = y_vad.copy()
+  y_vad_cls[y_vad_cls < 10] = -1
+  y_vad_cls[y_vad_cls >= 10] = 1
+
+  for nombre, clasificador in clasificadores:
+    with mensaje("Ajustando modelo {}".format(nombre)):
+      clasificador.fit(X_tra, y_tra_cls)
+    estima_error_clasif(clasificador, X_tra, y_tra_cls, X_vad, y_vad_cls, nombre)
+    espera()
+
+
+
 #############
 # REGRESIÓN #
 #############
 
+# Score para la búsqueda de hiperparámetros: el error cuadrático medio
 mse_scorer = make_scorer(mean_squared_error, greater_is_better = False)
 
 ## DUMMY
-dummy_regressor = Pipeline([("Dummy", DummyRegressor(strategy="mean"))])
+regresor_dummy = Pipeline([("Dummy", DummyRegressor(strategy="mean"))])
+
+## LINEAL (SGDRegressor)
+lin_regres = [("Lineal", SGDRegressor(loss="squared_loss", penalty="l2", max_iter=1000))]
+regresor_lineal = RandomizedSearchCV(
+  Pipeline(preprocesado + lin_regres),
+  param_distributions={**param_preprocesado, **param_lin},
+  **params_rs)
 
 ## RANDOM FOREST
 randomf_regres = [("RandomForest", RandomForestRegressor(random_state=0))]
@@ -341,55 +402,24 @@ regresor_svm = RandomizedSearchCV(
   scoring = mse_scorer,
   **params_rs)
 
-
-
-#########################
-# ERROR (CLASIFICACIÓN) #
-#########################
-
-# Lista de clasificadores
-clasificadores = [
-  ("Dummy", clasificador_dummy),
-  ("Random Forest", clasificador_randomf),
-  ("AdaBoost", clasificador_boost),
-  ("SVM", clasificador_svm)
+# Lista de regresores
+regresores = [
+  ("Dummy", regresor_dummy),
+  ("Lineal", regresor_lineal),
+  ("RandomForest", regresor_randomf),
+  ("AdaBoost", regresor_boost),
+  ("SVM", regresor_svm)
 ]
-
-for dataset, X_tra, X_vad, y_tra, y_vad in train_test:
-  imprime_titulo("CLASIFICACIÓN (APROBADO/SUSPENSO) PARA {}".format(dataset.upper()))
-
-  # Genera etiquetas de aprobado y suspenso
-  y_tra_cls = y_tra.copy()
-  y_tra_cls[y_tra_cls < 10] = -1
-  y_tra_cls[y_tra_cls >= 10] = 1
-
-  y_vad_cls = y_vad.copy()
-  y_vad_cls[y_vad_cls < 10] = -1
-  y_vad_cls[y_vad_cls >= 10] = 1
-
-  for nombre, clasificador in clasificadores:
-    with mensaje("Ajustando modelo: '{}'".format(nombre)):
-      clasificador.fit(X_tra, y_tra_cls)
-    estima_error_clasif(clasificador, X_tra, y_tra_cls, X_vad, y_vad_cls, nombre)
-    espera()
 
 
 #####################
 # ERROR (REGRESIÓN) #
 #####################
 
-# Lista de regresores
-regresores = [
-  ("Dummy", dummy_regressor),
-  ("RandomForest", regresor_randomf),
-  ("AdaBoost", regresor_boost),
-  ("SVM", regresor_svm)
-]
-
 for dataset, X_tra, X_vad, y_tra, y_vad in train_test:
   imprime_titulo("REGRESIÓN PARA {}".format(dataset.upper()))
   for nombre, regresor in regresores:
-    with mensaje("Ajustando modelo: '{}'".format(nombre)):
+    with mensaje("Ajustando modelo {}".format(nombre)):
       regresor.fit(X_tra, y_tra)
     estima_error_regresion(regresor, X_tra, y_tra, X_vad, y_vad, nombre)
     espera()
