@@ -15,7 +15,6 @@ import time
 
 # NumPy
 import numpy as np
-import numpy.lib.recfunctions as rfn
 
 # Matplotlib
 import matplotlib.pyplot as plt
@@ -29,7 +28,7 @@ from sklearn.pipeline import Pipeline
 from sklearn.preprocessing import StandardScaler
 
 # Sklearn (modelos)
-from sklearn.metrics import mean_squared_error
+from sklearn.metrics import mean_squared_error, make_scorer
 from sklearn.ensemble import RandomForestClassifier, RandomForestRegressor
 from sklearn.ensemble import AdaBoostClassifier, AdaBoostRegressor
 from sklearn.svm import SVR, SVC
@@ -76,36 +75,48 @@ class mensaje:
       return False
 
 
-def estima_error_clasif(clasificador, X_tra, y_tra, X_test, y_test, nombre):
+def estima_error_clasif(clasificador, X_tra, y_tra, X_tes, y_tes, nombre):
   """Estima diversos errores de un clasificador.
   Debe haberse llamado previamente a la función fit del clasificador."""
-  c_sc_tra = clasificador.score(X_tra, y_tra)
-  c_sc_test = clasificador.score(X_test, y_test)
   print("Errores para clasificador {}".format(nombre))
-  print("  % incorrectos (training): {:.3f}".format(1 - c_sc_tra))
-  print("  % incorrectos (test): {:.3f}".format(1 - c_sc_test))
+  scores = [] # TODO: Borrar
+
+  for datos, X, y in [("training", X_tra, y_tra), ("test", X_tes, y_tes)]:
+    score = clasificador.score(X_tra, y_tra)
+    print("  % incorrectos ({}): {:.3f}".format(datos, 1 - score))
+    scores.append(score) # TODO: Borrar
+
+  # TODO: Borrar
   with open('datos_finales.csv', 'a') as csvfile:
     datos_finales = csv.writer(csvfile)
-    datos_finales.writerow(["Clasificador",nombre, c_sc_tra, c_sc_test])
+    datos_finales.writerow(["Clasificador",nombre] + scores)
 
 
 def estima_error_regresion(regresor, X_tra, y_tra, X_tes, y_tes, nombre):
   """Estima diversos errores de un regresor.
   Debe haberse llamado previamente a la función fit del regresor."""
+
   print("Errores para regresor {}".format(nombre))
+  mses = [] # TODO: Borrar
   for datos, X, y in [("training", X_tra, y_tra), ("test", X_tes, y_tes)]:
     y_pred = regresor.predict(X)
-    c_sc = math.sqrt(mean_squared_error(y, y_pred))
-    print("  RMSE ({}): {:.3f}".format(
-      datos, c_sc_tra))
-    print("  R²   ({}): {:.3f}".format(datos, regresor.score(X, y)))
-    with open('datos_finales.csv', 'a') as csvfile:
-      datos_finales = csv.writer(csvfile)
-      datos_finales.writerow(["Regresor", nombre, c_sc])
+    mse = math.sqrt(mean_squared_error(y, y_pred))
+    print("  RMSE ({}): {:.3f}".format(datos, mse))
+    mses.append(mse) # TODO: Borrar
+
+  # TODO: Borrar
+  with open('datos_finales.csv', 'a') as csvfile:
+    datos_finales = csv.writer(csvfile)
+    datos_finales.writerow(["Regresor", nombre] + mses)
 
 def espera():
   """Espera hasta que el usuario pulse una tecla."""
   input("\n--- Pulsar tecla para continuar ---\n")
+
+def imprime_titulo(titulo):
+  """Imprime el título de una sección."""
+  print("\n" + titulo)
+  print("-"*len(titulo), end="\n\n")
 
 
 ########################################
@@ -119,7 +130,6 @@ np.random.seed(0)
 # Localización de los archivos
 DATOS_MAT = "datos/student-mat.csv"
 DATOS_PT = "datos/student-por.csv"
-
 
 
 ####################
@@ -190,23 +200,10 @@ tipo = {'names': names, 'formats': [np.float64] * len(names)}
 datos_mat = np.array(datos_brutos_mat, dtype=tipo)
 datos_pt = np.array(datos_brutos_pt, dtype=tipo)
 
-datos = rfn.join_by([
-  "school", "sex", "age", "address", "famsize", "Pstatus", "Medu", "Fedu",
-  "Mjob", "Fjob", "reason", "nursery", "internet"
-],
-                    datos_mat,
-                    datos_pt,
-                    jointype="inner")
-
-# CODIFICACIÓN DE VARIABLES CATEGÓRICAS
-encoder = OneHotEncoder(handle_unknown="error",
-                        sparse=False,
-                        categorical_features=categorical)
-
-# Datos leídos como arrays NumPy compatibles con scikitlearn
-X_mat = encoder.fit_transform(datos_mat[features].copy().view(
-  (np.float64, len(features))))
-y_mat = datos_mat['G3'].copy().view((np.float64, 1))
+datasets = [
+  ("Matemáticas", datos_mat),
+  ("Portugués", datos_pt)
+]
 
 # Vacío del archivo datos_finales.csv
 
@@ -218,10 +215,17 @@ f.close()
 # TRAINING Y TEST #
 ###################
 
-X_tra, X_vad, y_tra, y_vad = train_test_split(X_mat,
-                                              y_mat,
-                                              test_size=0.2,
-                                              random_state=1)
+# CODIFICACIÓN DE VARIABLES CATEGÓRICAS
+encoder = OneHotEncoder(handle_unknown="error",
+                        sparse=False,
+                        categorical_features=categorical)
+
+train_test = []
+for nombre, datos in datasets:
+  # Datos leídos como arrays NumPy compatibles con scikitlearn
+  X = encoder.fit_transform(datos[features].copy().view((np.float64, len(features))))
+  y = datos['G3'].copy().view((np.float64, 1))
+  train_test.append([nombre] + train_test_split(X,y,test_size=0.2,random_state=1))
 
 
 ################
@@ -236,9 +240,14 @@ varianceThreshold = Pipeline([("EliminarVarBajas", VarianceThreshold(VAR_T)),
 preprocesado = [("preprocesado", None)]
 param_preprocesado = {"preprocesado": [varianceThreshold, None]}
 
+imprime_titulo("SELECCIÓN DE VARIABLES")
 v = VarianceThreshold(VAR_T)
-v.fit(X_tra)
-print("El número de las variables eliminadas por el umbral de varianza son: ", len(np.where(v.variances_ < VAR_T)[0]), "/", len(v.variances_))
+
+for nombre, X_tra, *_ in train_test:
+  v.fit(X_tra)
+  print("Variables eliminadas por umbral de varianza en '{}': {}".format(
+    nombre,
+    len(np.where(v.variances_ < VAR_T)[0]), "/", len(v.variances_)))
 
 
 #########################
@@ -287,18 +296,23 @@ clasificador_boost = RandomizedSearchCV(
 ## SVM
 
 param_svm = {
-  "SVM__kernel": ["rbf", "poly"],
-  "SVM__C": [0.001, 0.01, 0.1, 1],
+  "SVM__C": [0.01, 0.1, 1, 2],
   "SVM__gamma": [0.001, 0.01, 0.1, 1],
 }
+svr = [("SVM", SVR(kernel="poly"))]
+clasificador_svm = RandomizedSearchCV(
+  Pipeline(preprocesado + svr),
+  param_distributions={**param_preprocesado, **param_svm},
+  **params_rs)
 
 
 #############
 # REGRESIÓN #
 #############
 
-## DUMMY
+mse_scorer = make_scorer(mean_squared_error, greater_is_better = False)
 
+## DUMMY
 dummy_regressor = Pipeline([("Dummy", DummyRegressor(strategy="mean"))])
 
 ## RANDOM FOREST
@@ -306,6 +320,7 @@ randomf_regres = [("RandomForest", RandomForestRegressor(random_state=0))]
 regresor_randomf = RandomizedSearchCV(
   Pipeline(preprocesado + randomf_regres),
   param_distributions={**param_preprocesado, **param_rf},
+  scoring = mse_scorer,
   **params_rs)
 
 ## ADABOOST
@@ -315,14 +330,17 @@ boosting_regres = [("AdaBoost", AdaBoostRegressor(random_state=0))]
 regresor_boost = RandomizedSearchCV(
   Pipeline(preprocesado + boosting_regres),
   param_distributions={**param_preprocesado, **param_ab_reg},
+  scoring = mse_scorer,
   **params_rs)
 
 ## SVM
-svr = [("SVM", SVR())]
-clasificador_svm = RandomizedSearchCV(
+svc = [("SVC", SVC(kernel="poly"))]
+regresor_svm = RandomizedSearchCV(
   Pipeline(preprocesado + svr),
   param_distributions={**param_preprocesado, **param_svm},
+  scoring = mse_scorer,
   **params_rs)
+
 
 
 #########################
@@ -337,25 +355,30 @@ clasificadores = [
   ("SVM", clasificador_svm)
 ]
 
-y_tra_cls = y_tra.copy()
-y_tra_cls[y_tra_cls < 10] = -1
-y_tra_cls[y_tra_cls >= 10] = 1
+for dataset, X_tra, X_vad, y_tra, y_vad in train_test:
+  imprime_titulo("CLASIFICACIÓN (APROBADO/SUSPENSO) PARA {}".format(dataset.upper()))
 
-y_vad_cls = y_vad.copy()
-y_vad_cls[y_vad_cls < 10] = -1
-y_vad_cls[y_vad_cls >= 10] = 1
+  # Genera etiquetas de aprobado y suspenso
+  y_tra_cls = y_tra.copy()
+  y_tra_cls[y_tra_cls < 10] = -1
+  y_tra_cls[y_tra_cls >= 10] = 1
 
-for nombre, clasificador in clasificadores:
-  with mensaje("Ajustando modelo: '{}'".format(nombre)):
-    clasificador.fit(X_tra, y_tra_cls)
-  estima_error_clasif(clasificador, X_tra, y_tra_cls, X_vad, y_vad_cls, nombre)
-  espera()
+  y_vad_cls = y_vad.copy()
+  y_vad_cls[y_vad_cls < 10] = -1
+  y_vad_cls[y_vad_cls >= 10] = 1
+
+  for nombre, clasificador in clasificadores:
+    with mensaje("Ajustando modelo: '{}'".format(nombre)):
+      clasificador.fit(X_tra, y_tra_cls)
+    estima_error_clasif(clasificador, X_tra, y_tra_cls, X_vad, y_vad_cls, nombre)
+    espera()
 
 
 #####################
 # ERROR (REGRESIÓN) #
 #####################
 
+# Lista de regresores
 regresores = [
   ("Dummy", dummy_regressor),
   ("RandomForest", regresor_randomf),
@@ -363,8 +386,10 @@ regresores = [
   ("SVM", regresor_svm)
 ]
 
-for nombre, regresor in regresores:
-  with mensaje("Ajustando modelo: '{}'".format(nombre)):
-    regresor.fit(X_tra, y_tra)
-  estima_error_regresion(regresor, X_tra, y_tra, X_vad, y_vad, nombre)
-  espera()
+for dataset, X_tra, X_vad, y_tra, y_vad in train_test:
+  imprime_titulo("REGRESIÓN PARA {}".format(dataset.upper()))
+  for nombre, regresor in regresores:
+    with mensaje("Ajustando modelo: '{}'".format(nombre)):
+      regresor.fit(X_tra, y_tra)
+    estima_error_regresion(regresor, X_tra, y_tra, X_vad, y_vad, nombre)
+    espera()
