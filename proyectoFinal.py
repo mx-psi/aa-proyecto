@@ -184,11 +184,15 @@ X_tra, X_vad, y_tra, y_vad = train_test_split(X_mat,
 
 # SELECCIÓN DE CARACTERÍSTICAS
 
-varianceThreshold = Pipeline([("EliminarVarBajas", VarianceThreshold(0.5)),
+VAR_T = 0.5
+varianceThreshold = Pipeline([("EliminarVarBajas", VarianceThreshold(VAR_T)),
                               ("Escalado", StandardScaler())])
 preprocesado = [("preprocesado", None)]
 param_preprocesado = {"preprocesado": [varianceThreshold, None]}
 
+v = VarianceThreshold(VAR_T)
+v.fit(X_tra)
+print("El número de las variables eliminadas por el umbral de varianza son: ", len(np.where(v.variances_ < VAR_T)[0]), "/", len(v.variances_))
 #########################
 # DEFINICIÓN DE MODELOS #
 #########################
