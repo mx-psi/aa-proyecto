@@ -226,7 +226,13 @@ Para la realización de la regresión y de la clasificación hemos realizado los
     * `n_estimators`: El número de estimadores con el que terminamos de hacer boosting.
     * `learning rate`: Disminuye la contribución de cada clasificador por este valor.
 
-La técnica para parametrizar los diferentes valores de cada uno de los argumentos en estos modelos ha sido
+La técnica para parametrizar los diferentes valores de cada uno de los argumentos en estos modelos ha sido utilizar el objeto `RandomizedSearchCV`. Este objeto recibe un diccionario con los nombres de los parámetros con una lista de los valores que queremos probar, y en cada uno de ellos elige uno al azar, ejecuta el modelo y se queda con la mejor iteración de parámetros, según la función de score que le hayamos dicho que priorice. En regresión ha sido el MSE y en clasificación la precisión final del modelo sobre el conjunto de validación.
+
+Para esto, además, es necesario indicar el número de iteraciones de parámetros que queremos probar. No será igual probar diez iteraciones que cien iteraciones en cada modelo, la precisión a la hora de obtener unos buenos hiperparámetros dependerá directamente de este valor. Lo hemos dejado a un valor bajo, a 20, para que se pueda ejecutar de forma sencilla, pero podríamos cambiar fácilmente este parámetro para obtener una mayor probabilidad de mejores resultados a costa de mayor tiempo de ejecución.
+
+Hay que notar que el objeto `RandomizedSearchCV` aplica cross-validation con el número de particiones que le digamos. En nuestro caso han sido cinco. Es importante para poder validar que el resultado ha sido correcto utilizar una validación out-of-bag, es decir, con elementos que no habíamos usado para entrenar, de esta forma obtenemos una medida más certera de lo buena que es la predicción.
+
+Por último, hemos indicado que use tantos procesadores como pueda. Una de las ventajas de este método es que permite paralelizar el proceso, nótese que una ejecución de los modelos con diferentes parámetros es totalmente independiente de las otras ejecuciones, por lo que si podemos aprovechar este hecho para acelerar la búsqueda de buenos parámetros, mejor.
 
 
 # Aplicación de las técnicas
