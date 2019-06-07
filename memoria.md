@@ -113,6 +113,9 @@ El problema a realizar puede tratarse desde dos enfoques principales:
 1. como un problema de **clasificación**, en el que clasificamos a los estudiantes en función de si están aprobados o no (esto es, si G3 es mayor o igual 10 o no) o
 2. como un problema de **regresión**, en el que intentamos predecir la nota de los estudiantes en función de sus características.
 
+Ambos enfoques tienen interés práctico: tanto clasificar a los estudiantes como hacer regresión puede ayudar a identificar posibles problemas en los estudiantes para mejorar su educación.
+Un posible tercer enfoque es propuesto en el paper original donde se presenta el conjunto de datos es clasificar en 5 bloques asociados a las puntuaciones del sistema Erasmus, enfoque que no desarrollamos aquí.
+
 Hemos querido hacer los cuatro modelos de regresión debido a que hemos visto que tenía más sentido tratar las notas como un número en lugar de como un suspenso y aprobado. El modelo tiene más capacidad predictiva y es más general que si lo tratamos como un problema de clasificación. Sin embargo, debido a que los autores originales hacían un estudio desde ambas perspectivas, hemos decidido añadir (con tres modelos de los cuatro que ya usábamos en regresión) la versión de clasificación para ver qué tal funcionaba.
 
 # Preprocesado

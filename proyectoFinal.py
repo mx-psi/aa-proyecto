@@ -83,7 +83,7 @@ def estima_error_clasif(clasificador, X_tra, y_tra, X_tes, y_tes, nombre):
   scores = [] # TODO: Borrar
 
   for datos, X, y in [("training", X_tra, y_tra), ("test", X_tes, y_tes)]:
-    score = clasificador.score(X_tra, y_tra)
+    score = clasificador.score(X, y)
     print("  % incorrectos ({}): {:.3f}".format(datos, 1 - score))
     scores.append(score) # TODO: Borrar
 
