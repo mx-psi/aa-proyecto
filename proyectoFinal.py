@@ -80,17 +80,10 @@ def estima_error_clasif(clasificador, X_tra, y_tra, X_tes, y_tes, nombre):
   """Estima diversos errores de un clasificador.
   Debe haberse llamado previamente a la función fit del clasificador."""
   print("Errores para clasificador {}".format(nombre))
-  scores = [] # TODO: Borrar
 
   for datos, X, y in [("training", X_tra, y_tra), ("test", X_tes, y_tes)]:
     score = clasificador.score(X, y)
     print("  % incorrectos ({}): {:.3f}".format(datos, 1 - score))
-    scores.append(score) # TODO: Borrar
-
-  # TODO: Borrar
-  with open('datos_finales.csv', 'a') as csvfile:
-    datos_finales = csv.writer(csvfile)
-    datos_finales.writerow(["Clasificador",nombre] + scores)
 
 
 def estima_error_regresion(regresor, X_tra, y_tra, X_tes, y_tes, nombre):
@@ -98,17 +91,10 @@ def estima_error_regresion(regresor, X_tra, y_tra, X_tes, y_tes, nombre):
   Debe haberse llamado previamente a la función fit del regresor."""
 
   print("Errores para regresor {}".format(nombre))
-  mses = [] # TODO: Borrar
   for datos, X, y in [("training", X_tra, y_tra), ("test", X_tes, y_tes)]:
     y_pred = regresor.predict(X)
     mse = math.sqrt(mean_squared_error(y, y_pred))
     print("  RMSE ({}): {:.3f}".format(datos, mse))
-    mses.append(mse) # TODO: Borrar
-
-  # TODO: Borrar
-  with open('datos_finales.csv', 'a') as csvfile:
-    datos_finales = csv.writer(csvfile)
-    datos_finales.writerow(["Regresor", nombre] + mses)
 
 def espera():
   """Espera hasta que el usuario pulse una tecla."""
@@ -207,11 +193,6 @@ datasets = [
   ("Portugués", datos_pt)
 ]
 
-# Vacío del archivo datos_finales.csv
-
-f = open("datos_finales.csv","w+")
-f.close()
-
 
 ###################
 # TRAINING Y TEST #
@@ -222,6 +203,8 @@ encoder = OneHotEncoder(handle_unknown="error",
                         sparse=False,
                         categorical_features=categorical)
 
+# Adapta a datos compatibles con sklearn y divide cada dataset
+# en training y test
 train_test = []
 for nombre, datos in datasets:
   # Datos leídos como arrays NumPy compatibles con scikitlearn
@@ -236,11 +219,17 @@ for nombre, datos in datasets:
 
 # SELECCIÓN DE CARACTERÍSTICAS
 
+# Definición del proceso de preprocesado
 VAR_T = 0.3
 varianceThreshold = Pipeline([("EliminarVarBajas", VarianceThreshold(VAR_T)),
                               ("Escalado", StandardScaler())])
+
+# Ponemos a None para elegir durante la RandomizedSearchCV
 preprocesado = [("preprocesado", None)]
+
+# O bien nada o bien varianceThreshold
 param_preprocesado = {"preprocesado": [varianceThreshold, None]}
+
 
 imprime_titulo("SELECCIÓN DE VARIABLES")
 v = VarianceThreshold(VAR_T)
@@ -258,7 +247,11 @@ for nombre, X_tra, *_ in train_test:
 #########################
 #########################
 
+# Parámetros que usa RandomizedSearchCV (descritos en la memoria)
 params_rs = dict(n_iter=20, cv=5, n_jobs=-1, iid=False)
+
+# Los diccionarios que empiezan por `param` son los que se utilizan
+# en RandomizedSearchCV para elegir los distintos hiperparámetros.
 
 #################
 # CLASIFICACIÓN #
@@ -276,7 +269,7 @@ param_lin = {
   "Lineal__learning_rate": ["optimal", "invscaling"],
   "Lineal__eta0": [0.0001, 0.001, 0.01]
 }
-lin_clasif = [("Lineal", SGDClassifier(loss="hinge", penalty="l2", max_iter=1000))]
+lin_clasif = [("Lineal", SGDClassifier(loss="hinge", penalty="l2", max_iter=1000, tol=0.0001))]
 clasificador_lineal = RandomizedSearchCV(
   Pipeline(preprocesado + lin_clasif),
   param_distributions={**param_preprocesado, **param_lin},
@@ -339,6 +332,7 @@ clasificadores = [
 # ERROR (CLASIFICACIÓN) #
 #########################
 
+# Para cada dataset
 for dataset, X_tra, X_vad, y_tra, y_vad in train_test:
   imprime_titulo("CLASIFICACIÓN (APROBADO/SUSPENSO) PARA {}".format(dataset.upper()))
 
@@ -351,17 +345,20 @@ for dataset, X_tra, X_vad, y_tra, y_vad in train_test:
   y_vad_cls[y_vad_cls < 10] = -1
   y_vad_cls[y_vad_cls >= 10] = 1
 
+  # Ajusta cada modelo y calcula su error
   for nombre, clasificador in clasificadores:
     with mensaje("Ajustando modelo {}".format(nombre)):
       clasificador.fit(X_tra, y_tra_cls)
     estima_error_clasif(clasificador, X_tra, y_tra_cls, X_vad, y_vad_cls, nombre)
-    espera()
+    espera() # Espera a nuevo input
 
 
 
 #############
 # REGRESIÓN #
 #############
+
+# Reutilizamos algunos de los parámetros de los clasificadores
 
 # Score para la búsqueda de hiperparámetros: el error cuadrático medio
 mse_scorer = make_scorer(mean_squared_error, greater_is_better = False)
@@ -370,7 +367,7 @@ mse_scorer = make_scorer(mean_squared_error, greater_is_better = False)
 regresor_dummy = Pipeline([("Dummy", DummyRegressor(strategy="mean"))])
 
 ## LINEAL (SGDRegressor)
-lin_regres = [("Lineal", SGDRegressor(loss="squared_loss", penalty="l2", max_iter=1000))]
+lin_regres = [("Lineal", SGDRegressor(loss="squared_loss", penalty="l2", max_iter=1000, tol = 0.0001))]
 regresor_lineal = RandomizedSearchCV(
   Pipeline(preprocesado + lin_regres),
   param_distributions={**param_preprocesado, **param_lin},
@@ -422,4 +419,5 @@ for dataset, X_tra, X_vad, y_tra, y_vad in train_test:
     with mensaje("Ajustando modelo {}".format(nombre)):
       regresor.fit(X_tra, y_tra)
     estima_error_regresion(regresor, X_tra, y_tra, X_vad, y_vad, nombre)
-    espera()
+    if dataset != "Portugués" or nombre != "SVM":
+      espera()

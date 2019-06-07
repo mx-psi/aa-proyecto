@@ -300,7 +300,7 @@ Para mostrar el error obtenido sin embargo hemos mostrado el RMSE (*Root Mean Sq
 
 ## Regularización
 
-En esta sección describimos la regularización de cada modelo.
+La regularización ha sido aplicada 
 
 ## Ajuste de hiperparámetros
 
@@ -332,5 +332,59 @@ Por último, hemos indicado que use tantos procesadores como pueda. Una de las v
 
 # Valoración del resultado
 
+A continuación vamos a valorar los resultados que hemos obtenido de cada uno de los modelos. Estos resultados se pueden comprobar en la siguiente tabla, son los que aparecen por pantalla a la hora de ejecutarlo.
+
+Nótese que hay dos filas por cada uno de los modelos con sus respectivos tipos de predicción. Las primeras filas corresponden a la asignatura de matemáticas, las segundas filas (cuando se repite un modelo con un tipo de predicción) corresponden a la asignatura de portugués, que en el propio dataset venían separadas.
+
+|Tipo | Modelo | $E_{\operatorname{in}}$ | $E_{\operatorname{test}}$ |
+|-----|--------|-------------------------|---------------------------|
+|Clasificador | Dummy | 0,5316 | 0,6076 |
+|Clasificador | Lineal | 0,9557 | 0,9241 |
+|Clasificador | Random Forest | 0,9589 | 0,9114 |
+|Clasificador | AdaBoost | 0,9209 | 0,9114 |
+|Clasificador | SVM | 0,9335 | 0,9114 |
+|------------|-----|--------|--------|
+|Clasificador | Dummy | 0,738 | 0,6923 |
+|Clasificador | Lineal | 0,9557 | 0,9 |
+|Clasificador | Random Forest | 0,9461 | 0,9077 |
+|Clasificador | AdaBoost | 0,9711 | 0,9 |
+|Clasificador | SVM | 0,9576 | 0,8846 |
+|-----------|-----|--------|--------|
+|Regresor | Dummy | 4,7699 | 3,6983 |
+|Regresor | Lineal | 1,8465 | 1,7429 |
+|Regresor | RandomForest | 1,1912 | 1,3852 |
+|Regresor | AdaBoost | 1,4216 | 1,5522 |
+|Regresor | SVM | 2,0686 | 1,8147 |
+|------------|-----|--------|--------|
+|Regresor | Dummy | 3,1092 | 3,6649 |
+|Regresor | Lineal | 1,2164 | 1,3428 |
+|Regresor | RandomForest | 0,4561 | 1,5007 |
+|Regresor | AdaBoost | 0,9365 | 1,5944 |
+|Regresor | SVM | 1,1087 | 1,5115 |
+
+
+Lo primero a notar es que hemos dividido en dos partes: la de clasificación y regresión. A su vez, hay dos columnas, una para el error en training y otra para el error en test. Hemos visto importante ver estas dos columnas para poder hacernos una idea de si estamos entrenando demasiado al training, o si nos falta complejidad a la hora de predecir las etiquetas de entrenamiento. 
+
+También lo hemos dividido en las dos asignaturas que separa el dataset. Esto es relevante porque hay ciertas diferencias a la hora del dataset de matemáticas con el de portugués, lo cual es razonable desde el punto de vista de que son asignaturas que requieren habilidades diferentes.
+
+Por tener contexto a la hora de comparar resultados hemos añadido el modelo Dummy, que es un modelo que da predicciones con la media de los datos. Esto nos permite tener una base con la que valorar cómo de bien lo hemos hecho.
+
+Si nos fijamos, en clasificación hemos puesto el score en función de la precisión de cada modelo. En el Dummy ronda el 60% de precisión, que es lo mínimo que debemos esperar del resto de modelos. Otro apunte es ver cuál es el modelo que mejor ejecuta en el conjunto de validación (que es nuestro objetivo). En este caso, el modelo de clasificador lineal consigue un 92.4% de predicciones correctas, que es el máximo seguido por AdaBoost y Random Forest, que están en 91.1%. Es importante notar que Random Forest por ejemplo tiene mejor predicción en el propio entrenamiento, lo cual significa que hemos caído en un overfitting que un modelo lineal no puede llegar a cometer. Esto nos indica una posible mejora del Random Forest, si conseguimos arreglar el problema de alta varianza conseguiremos reducir el error en validación y test.
+
+La diferencia entre asignaturas en clasificación denota que es más difícil predecir el resultado en portugués que en matemáticas. Hay una diferencia constante en todos los modelos del 2%. Puede deberse a ruido en los datos o quizá tiene relación con que las matemáticas se relacionan de forma más íntima con las variables que se decidieron medir en el estudio. Desde este análisis superficial es imposible saberlo.
+
+Destacamos también que en portugués hay una diferencia abrumadora del training al test, es decir que encontramos mucho más overfitting en estos datos que en los de matemáticas. Esto es lo contrario a lo que esperábamos, debido a que sabemos que cuanto más training, menos varianza tenemos y por lo tanto menos overfitting. Esperábamos que al haber el doble de alumnos en portugués, tuviéramos menos overfitting, y sin embargo no es así. La caída de training a test es casi del triple en todos los modelos. Esto puede deberse a que el número de alumnos en ambas asignaturas sigue siendo bastante bajo, de 300 y 600. Podríamos sacar conclusiones más rotundas si el número de tuplas de datos originales fuera del orden de miles o decenas de miles.
+
+En cuanto a la regresión, ahora los score finales no están en función de la accuracy si no en función del MSE. Esto provoca que tengamos que saber que estos exámenes estaban en función de 20 puntos. En este caso, Dummy hace un score final de 3.6, debido a que funciona prediciendo la media de las etiquetas de los datos, en realidad estamos viendo el MSE de los datos con su media, que en este caso es su desviación. Así que 3.6 es la desviación típica de los datos del dataset.
+
+Yendo a la comparación en sí, como vemos el resto de modelos reducen bastante el error producido por la predicción de regresión. Recordemos que este problema es fundamentalmente mucho más complicado que el de clasificación ya que tienen que predecir la nota del 0 al 20 de los alumnos. Consiguen desviarse una media de 1.5, donde el mejor modelo en el test es el lineal, que consigue un 1.38 de error final. De nuevo, este modelo que es el más sencillo de todos es el que consigue mejor puntuación. Notemos, de nuevo, que AdaBoost y RandomForest tienen un problema de overfitting (especialmente notable en la parte de los datos correspondiente a la asignatura del portugués).
+
+Todo lo que estamos comentando respecto del overfitting que están sufriendo RandomForest y AdaBoost que el modelo lineal no ha sufrido está relacionado con la dimensión VC de los modelos, y la podríamos resolver añadiendo una regularización más pronunciada en estos con los parámetros correspondientes. Esto se debe a que en la curva de aprendizaje, cuando observamos cómo afecta el número de datos del dataset a nuestros errores en training y en test (que es exactamente lo que estamos observando aquí) nos encontramos en la parte de la curva en la que tenemos alto error fuera del entrenamiento pero bajo dentro. Es decir, si tuviéramos más datos, como ya hemos mencionado antes, podríamos obtener mejores resultados ya que RandomForest y AdaBoosting tendrían resueltos sus problemas de overfitting.
+
 # Conclusiones
+
+A lo largo de este trabajo hemos explorado un dataset concreto (que tiene relación con estudiantes, y de ahí tiene interés inherente para nosotros) y hemos visto cómo los diferentes modelos elegidos predecían, una vez que los hemos regularizado y elegido sus hiperparámetros, la clasificación y regresión de este problema. Es importante notar que hemos podido comparar cómo los mismos modelos hacían ambos tipos de problemas.
+
+Hemos obtenido los resultados y hemos relacionado estos datos con los resultados vistos en clase sobre overfitting (que era el problema que nos encontrábamos principalmente aquí, habiendo visto los resultados en training y test y teniendo en cuenta el bajo número de alumnos dentro del dataset), y cómo eso puede apuntar a una posible mejora respecto a resolver las predicciones que hemos obtenido: ya sea obteniendo un mayor volumen de datos que ayude a bajar la alta varianza que hemos obtenido o regularizando y trastocando los propios modelos en sí. Creemos que hemos conseguido unos resultados bastante buenos, y hemos conseguido aplicar con facilidad los modelos de predicción gracias a las herramientas de Scikit learn.
+
 # Bibliografía {.unnumbered}
